@@ -1,0 +1,159 @@
+{
+  "updated": "2026-09-08 16:20",
+  "hold_days": 1,
+  "canonical_days": 5,
+  "preview": true,
+  "signal": "2560战法（中短线趋势·非超短）",
+  "n_total": 72,
+  "win_total": 37,
+  "win_rate": 0.5139,
+  "avg_ret": 0.0042,
+  "samples": [
+    {
+      "signal_date": "2026-08-26",
+      "sample_type": "A观察样本(Top12)",
+      "n": 12,
+      "win_n": 11,
+      "win_rate": 0.9167,
+      "avg_ret": 0.0269,
+      "hold_days": 1.0,
+      "preview": true
+    },
+    {
+      "signal_date": "2026-08-27",
+      "sample_type": "A观察样本(Top12)",
+      "n": 12,
+      "win_n": 2,
+      "win_rate": 0.1667,
+      "avg_ret": -0.0103,
+      "hold_days": 1.0,
+      "preview": true
+    },
+    {
+      "signal_date": "2026-08-28",
+      "sample_type": "A观察样本(Top12)",
+      "n": 12,
+      "win_n": 10,
+      "win_rate": 0.8333,
+      "avg_ret": 0.017,
+      "hold_days": 1.0,
+      "preview": true
+    },
+    {
+      "signal_date": "2026-09-01",
+      "sample_type": "A观察样本(Top12)",
+      "n": 12,
+      "win_n": 3,
+      "win_rate": 0.25,
+      "avg_ret": -0.0175,
+      "hold_days": 1.0,
+      "preview": true
+    },
+    {
+      "signal_date": "2026-09-03",
+      "sample_type": "A观察样本(Top12)",
+      "n": 12,
+      "win_n": 5,
+      "win_rate": 0.4167,
+      "avg_ret": -0.0076,
+      "hold_days": 1.0,
+      "preview": true
+    },
+    {
+      "signal_date": "2026-09-04",
+      "sample_type": "A观察样本(Top12)",
+      "n": 12,
+      "win_n": 6,
+      "win_rate": 0.5,
+      "avg_ret": 0.0167,
+      "hold_days": 1.0,
+      "preview": true
+    }
+  ],
+  "last_detail": [
+    {
+      "code": 300394,
+      "name": "天孚通信",
+      "status": "OK",
+      "ret": "7.36%",
+      "win": "是"
+    },
+    {
+      "code": 300607,
+      "name": "拓斯达",
+      "status": "OK",
+      "ret": "8.68%",
+      "win": "是"
+    },
+    {
+      "code": 601211,
+      "name": "国泰海通",
+      "status": "OK",
+      "ret": "-2.18%",
+      "win": "否"
+    },
+    {
+      "code": 977,
+      "name": "浪潮信息",
+      "status": "OK",
+      "ret": "-3.83%",
+      "win": "否"
+    },
+    {
+      "code": 2897,
+      "name": "意华股份",
+      "status": "OK",
+      "ret": "6.89%",
+      "win": "是"
+    },
+    {
+      "code": 425,
+      "name": "徐工机械",
+      "status": "OK",
+      "ret": "2.09%",
+      "win": "是"
+    },
+    {
+      "code": 426,
+      "name": "兴业银锡",
+      "status": "OK",
+      "ret": "-2.63%",
+      "win": "否"
+    },
+    {
+      "code": 2922,
+      "name": "伊戈尔",
+      "status": "OK",
+      "ret": "2.10%",
+      "win": "是"
+    },
+    {
+      "code": 2379,
+      "name": "宏桥控股",
+      "status": "OK",
+      "ret": "-1.74%",
+      "win": "否"
+    },
+    {
+      "code": 601138,
+      "name": "工业富联",
+      "status": "OK",
+      "ret": "4.52%",
+      "win": "是"
+    },
+    {
+      "code": 300170,
+      "name": "汉得信息",
+      "status": "OK",
+      "ret": "-0.84%",
+      "win": "否"
+    },
+    {
+      "code": 601168,
+      "name": "西部矿业",
+      "status": "OK",
+      "ret": "-0.41%",
+      "win": "否"
+    }
+  ]
+}

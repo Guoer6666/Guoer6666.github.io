@@ -1,0 +1,5 @@
+# 部署到 GitHub Pages 时的忽略项
+*.log
+.DS_Store
+Thumbs.db
+__pycache__/
