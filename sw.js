@@ -3,30 +3,30 @@
    - 同源静态资源（HTML/CSS/JS/图标）：网络优先，失败回退缓存（保证永远拿到最新版本，离线也能打开）
    - 跨域请求（腾讯行情/东方财富/代理等实时数据接口）：完全放行，不缓存（保证行情永远实时）
    - 版本升级时自动清理旧缓存并立即接管页面 */
-const CACHE = 'guoer-wb-v125';
+const CACHE = 'guoer-wb-v126';
 const SHELL = [
   './',
   './index.html',
-  './manifest.webmanifest?v=guoer-wb-v125',
-  './assets/css/style.css?v=guoer-wb-v125',
-  './assets/js/store.js?v=guoer-wb-v125',
-  './assets/js/ui.js?v=guoer-wb-v125',
-  './assets/js/seed.js?v=guoer-wb-v125',
-  './assets/js/market.js?v=guoer-wb-v125',
-  './assets/js/news.js?v=guoer-wb-v125',
-  './assets/js/snapshot.js?v=guoer-wb-v125',
-  './assets/js/ai.js?v=guoer-wb-v125',
-  './assets/js/views-market.js?v=guoer-wb-v125',
-  './assets/js/views-market2.js?v=guoer-wb-v125',
-  './assets/js/views-analysis.js?v=guoer-wb-v125',
-  './assets/js/views-m2560.js?v=guoer-wb-v125',
-  './assets/js/views-pickscreen.v105.js?v=guoer-wb-v125',
-  './assets/js/views-life.js?v=guoer-wb-v125',
-  './assets/js/views-summary.v1.js?v=guoer-wb-v125',
-  './assets/js/crypto-gate.v124.js?v=guoer-wb-v125',
-  './assets/js/app.js?v=guoer-wb-v125',
-  './assets/icons/icon-192.png?v=guoer-wb-v125',
-  './assets/icons/icon-512.png?v=guoer-wb-v125'
+  './manifest.webmanifest?v=guoer-wb-v126',
+  './assets/css/style.css?v=guoer-wb-v126',
+  './assets/js/store.js?v=guoer-wb-v126',
+  './assets/js/ui.js?v=guoer-wb-v126',
+  './assets/js/seed.js?v=guoer-wb-v126',
+  './assets/js/market.js?v=guoer-wb-v126',
+  './assets/js/news.js?v=guoer-wb-v126',
+  './assets/js/snapshot.js?v=guoer-wb-v126',
+  './assets/js/ai.js?v=guoer-wb-v126',
+  './assets/js/views-market.js?v=guoer-wb-v126',
+  './assets/js/views-market2.js?v=guoer-wb-v126',
+  './assets/js/views-analysis.js?v=guoer-wb-v126',
+  './assets/js/views-m2560.js?v=guoer-wb-v126',
+  './assets/js/views-pickscreen.v105.js?v=guoer-wb-v126',
+  './assets/js/views-life.js?v=guoer-wb-v126',
+  './assets/js/views-summary.v1.js?v=guoer-wb-v126',
+  './assets/js/crypto-gate.js?v=guoer-wb-v126',
+  './assets/js/app.js?v=guoer-wb-v126',
+  './assets/icons/icon-192.png?v=guoer-wb-v126',
+  './assets/icons/icon-512.png?v=guoer-wb-v126'
 ];
 
 self.addEventListener('install', e => {
