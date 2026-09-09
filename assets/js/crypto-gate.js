@@ -5,13 +5,17 @@
  *  - 密钥 = PBKDF2(口令, salt, SHA-256, 100000) -> 32B；AES-GCM 256 解密。
  *  - 零侵入：monkey-patch window.fetch，app.js 与各视图一行不改。
  *  - 时序：app.js 初次 fetch 在口令未输入时进入 pending 队列，用户输入后统一重放。
+ *  - 记住登录：解锁成功后把口令写入 localStorage，下次打开自动解密，无需重复输入。
+ *    （仅本机浏览器生效；换设备/改口令后点右下角「退出登录」即可清除。）
  */
 (function () {
   'use strict';
   var REPORTS = '/api/reports/';
   var PROBE = '/api/reports/verify_ledger.json.enc';
+  var LS_KEY = 'wbGatePw';           // 记住登录：本地存储的口令
   var GATE_KEY = null;
   var pending = [];
+  var autoing = false;               // 自动登录进行中（避免闪烁登录框）
   var realFetch = window.fetch ? window.fetch.bind(window) : null;
 
   // ---- 注入样式 + 登录遮罩 ----
@@ -29,7 +33,11 @@
     '#wbGateBtn{width:100%;padding:11px 0;font-size:15px;color:#fff;background:#ff7fa6;border:none;',
     'border-radius:9px;cursor:pointer;font-weight:600;}',
     '#wbGateBtn:active{background:#ec6b94;}',
-    '#wbGateErr{color:#e23b3b;font-size:12px;min-height:16px;margin-top:8px;}'
+    '#wbGateErr{color:#e23b3b;font-size:12px;min-height:16px;margin-top:8px;}',
+    '#wbGateLogout{position:fixed;right:12px;bottom:12px;z-index:99998;display:none;',
+    'padding:7px 12px;font-size:12px;color:#fff;background:rgba(40,40,56,.82);border:none;',
+    'border-radius:8px;cursor:pointer;font-family:-apple-system,Segoe UI,Roboto,sans-serif;}',
+    '#wbGateLogout:active{background:rgba(40,40,56,1);}'
   ].join('');
   var style = document.createElement('style');
   style.textContent = css;
@@ -47,6 +55,16 @@
     '</div>';
   document.body.appendChild(mask);
 
+  // 退出登录按钮（解锁后显示）：清除本地记住的口令并刷新回登录框
+  var logoutBtn = document.createElement('button');
+  logoutBtn.id = 'wbGateLogout';
+  logoutBtn.textContent = '退出登录';
+  logoutBtn.addEventListener('click', function () {
+    try { localStorage.removeItem(LS_KEY); } catch (e) {}
+    location.reload();
+  });
+  document.body.appendChild(logoutBtn);
+
   var input = mask.querySelector('#wbGateInput');
   var errEl = mask.querySelector('#wbGateErr');
   function showGate(msg) {
@@ -54,7 +72,7 @@
     if (msg) errEl.textContent = msg;
     setTimeout(function () { try { input.focus(); } catch (e) {} }, 30);
   }
-  function hideGate() { mask.style.display = 'none'; }
+  function hideGate() { mask.style.display = 'none'; logoutBtn.style.display = 'block'; }
 
   function deriveKey(pw, salt) {
     return crypto.subtle.importKey('raw', new TextEncoder().encode(pw),
@@ -97,16 +115,16 @@
     window.fetch = function (u, o) {
       var url = (typeof u === 'string') ? u : (u && u.url) || '';
       if (url.indexOf(REPORTS) === 0 && url.indexOf('.enc') < 0 && !GATE_KEY) {
-        showGate();
         return new Promise(function (resolve, reject) {
           pending.push({ url: url, opts: o, resolve: resolve, reject: reject });
+          if (!autoing) showGate();   // 自动登录中不打扰用户
         });
       }
       return gated(url, o);
     };
   }
 
-  function unlock(pw) {
+  function unlock(pw, remember) {
     if (!pw) { showGate('请输入口令'); return; }
     realFetch(PROBE).then(function (r) {
       return r.arrayBuffer();
@@ -114,12 +132,17 @@
       return decryptBuf(buf, pw); // 仅验证口令能否解密
     }).then(function () {
       GATE_KEY = pw;
+      if (remember !== false) {
+        try { localStorage.setItem(LS_KEY, pw); } catch (e) {}
+      }
       hideGate();
       var items = pending.splice(0);
       items.forEach(function (it) {
         gated(it.url, it.opts).then(it.resolve).catch(it.reject);
       });
     }).catch(function () {
+      try { localStorage.removeItem(LS_KEY); } catch (e) {}
+      autoing = false;
       showGate('口令错误，请重试');
     });
   }
@@ -129,6 +152,13 @@
   mask.querySelector('#wbGateBtn').addEventListener('click', submit);
   input.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
 
-  // 首屏即显示登录框（若 app.js 尚未发起 fetch，这里也能兜住）
-  showGate();
+  // ---- 启动：若本地已记住口令，自动登录（不打扰）；否则显示登录框 ----
+  var saved = null;
+  try { saved = localStorage.getItem(LS_KEY); } catch (e) {}
+  if (saved) {
+    autoing = true;
+    unlock(saved, true);   // 成功则直接进；失败则清本地并弹出登录框
+  } else {
+    showGate();
+  }
 })();
