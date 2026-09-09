@@ -1,13 +1,13 @@
 {
-  "updated": "2026-09-08 16:20",
+  "updated": "2026-09-09 16:28",
   "hold_days": 1,
   "canonical_days": 5,
   "preview": true,
   "signal": "2560战法（中短线趋势·非超短）",
-  "n_total": 72,
-  "win_total": 37,
-  "win_rate": 0.5139,
-  "avg_ret": 0.0042,
+  "n_total": 84,
+  "win_total": 43,
+  "win_rate": 0.5119,
+  "avg_ret": 0.0034,
   "samples": [
     {
       "signal_date": "2026-08-26",
@@ -68,91 +68,101 @@
       "avg_ret": 0.0167,
       "hold_days": 1.0,
       "preview": true
+    },
+    {
+      "signal_date": "2026-09-07",
+      "sample_type": "A观察样本(Top12)",
+      "n": 12,
+      "win_n": 6,
+      "win_rate": 0.5,
+      "avg_ret": -0.0013,
+      "hold_days": 1.0,
+      "preview": true
     }
   ],
   "last_detail": [
     {
-      "code": 300394,
-      "name": "天孚通信",
+      "code": 688037,
+      "name": "芯源微",
       "status": "OK",
-      "ret": "7.36%",
-      "win": "是"
-    },
-    {
-      "code": 300607,
-      "name": "拓斯达",
-      "status": "OK",
-      "ret": "8.68%",
-      "win": "是"
-    },
-    {
-      "code": 601211,
-      "name": "国泰海通",
-      "status": "OK",
-      "ret": "-2.18%",
+      "ret": "-2.73%",
       "win": "否"
     },
     {
-      "code": 977,
-      "name": "浪潮信息",
+      "code": 300502,
+      "name": "新易盛",
       "status": "OK",
-      "ret": "-3.83%",
+      "ret": "-0.19%",
       "win": "否"
     },
     {
-      "code": 2897,
-      "name": "意华股份",
+      "code": 300308,
+      "name": "中际旭创",
       "status": "OK",
-      "ret": "6.89%",
+      "ret": "0.44%",
       "win": "是"
     },
     {
-      "code": 425,
-      "name": "徐工机械",
+      "code": 600938,
+      "name": "中国海油",
       "status": "OK",
-      "ret": "2.09%",
+      "ret": "3.83%",
       "win": "是"
     },
     {
-      "code": 426,
-      "name": "兴业银锡",
+      "code": 600105,
+      "name": "永鼎股份",
       "status": "OK",
-      "ret": "-2.63%",
+      "ret": "0.31%",
+      "win": "是"
+    },
+    {
+      "code": 601088,
+      "name": "中国神华",
+      "status": "OK",
+      "ret": "0.50%",
+      "win": "是"
+    },
+    {
+      "code": 601857,
+      "name": "中国石油",
+      "status": "OK",
+      "ret": "2.54%",
+      "win": "是"
+    },
+    {
+      "code": 2475,
+      "name": "立讯精密",
+      "status": "OK",
+      "ret": "-1.56%",
       "win": "否"
     },
     {
-      "code": 2922,
-      "name": "伊戈尔",
+      "code": 600030,
+      "name": "中信证券",
       "status": "OK",
-      "ret": "2.10%",
-      "win": "是"
-    },
-    {
-      "code": 2379,
-      "name": "宏桥控股",
-      "status": "OK",
-      "ret": "-1.74%",
+      "ret": "-1.19%",
       "win": "否"
     },
     {
-      "code": 601138,
-      "name": "工业富联",
+      "code": 601166,
+      "name": "兴业银行",
       "status": "OK",
-      "ret": "4.52%",
+      "ret": "0.66%",
       "win": "是"
     },
     {
-      "code": 300170,
-      "name": "汉得信息",
+      "code": 688519,
+      "name": "南亚新材",
       "status": "OK",
-      "ret": "-0.84%",
+      "ret": "-1.09%",
       "win": "否"
     },
     {
-      "code": 601168,
-      "name": "西部矿业",
+      "code": 1267,
+      "name": "汇绿生态",
       "status": "OK",
-      "ret": "-0.41%",
+      "ret": "-3.10%",
       "win": "否"
     }
   ]

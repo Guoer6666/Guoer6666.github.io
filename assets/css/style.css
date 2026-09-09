@@ -93,7 +93,11 @@ h1,h2,h3,h4,p{margin:0}
   padding:8px 10px 8px 30px;margin:1px 0;border-radius:var(--radius-sm);
   font-size:13px;color:var(--ink-2);text-align:left;position:relative;
   transition:background .16s,color .16s;
+  /* 「周期总结」等 href 型菜单渲染为 <a>，必须去掉浏览器默认下划线/链接色 */
+  text-decoration:none;cursor:pointer;
 }
+a.nav-item:link,a.nav-item:visited{color:var(--ink-2);text-decoration:none}
+a.nav-item:hover{color:var(--ink)}
 .nav-item:hover{background:var(--line-2);color:var(--ink)}
 .nav-item.active{background:var(--pink-soft);color:var(--pink-deep);font-weight:600}
 .nav-item.active::before{

@@ -2,7 +2,54 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<script>
+/* 版本自清理（防循环版）：注销旧 Service Worker + 清 Cache Storage，然后重载一次。
+   关键约束：CloudStudio CDN 对不带参数的 HTML 会较长时间返回旧版，
+   旧版页面（TARGET=旧值）与新版页面（TARGET=新值）会互相把对方判为"过期"，
+   若按版本号判断就会无限 reload → 闪屏（2026-09-08 事故）。
+   因此改为「按会话限流」：sessionStorage 记录自愈时间，8 小时内最多自愈一次，
+   无论加载到的是新版还是旧版页面都绝不再触发第二次 reload。 */
+(function(){
+  var KEY = '__wb_boot_clean__';
+  var WINDOW_MS = 8 * 60 * 60 * 1000;
+  try {
+    var last = parseInt(sessionStorage.getItem(KEY) || '0', 10);
+    if (Date.now() - last < WINDOW_MS) return;   /* 窗口内：绝不清理，绝不 reload */
+    sessionStorage.setItem(KEY, String(Date.now()));
+  } catch (e) { return; }                        /* 存储不可用：直接放弃自愈，保证不闪屏 */
+
+  var cleaned = false;
+  function reload() {
+    if (cleaned) return;
+    cleaned = true;
+    var u = new URL(location.href);
+    u.hash = '';
+    if (!u.searchParams.has('_fresh')) {
+      u.searchParams.set('_fresh', Date.now().toString());
+    }
+    location.replace(u.href);
+  }
+  var todo = 0;
+  if (navigator.serviceWorker) {
+    todo++;
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      return Promise.all(regs.map(function(r){ return r.unregister(); }));
+    }).finally(function(){ if(--todo===0) reload(); });
+  }
+  if (window.caches) {
+    todo++;
+    caches.keys().then(function(keys){
+      return Promise.all(keys.map(function(k){ return caches.delete(k); }));
+    }).finally(function(){ if(--todo===0) reload(); });
+  }
+  if (todo === 0) reload();
+  setTimeout(reload, 1000); /* 兜底：1秒后无论如何重载 */
+})();
+</script>
 <meta name="theme-color" content="#ff7fa6">
 <meta name="description" content="过儿的工作台 · A股每日复盘 / 打卡 / 挑战 / 兴趣">
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,7 +61,7 @@
 <meta name="apple-mobile-web-app-title" content="过儿的工作台">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="assets/icons/icon-192.png">
-<link rel="stylesheet" href="assets/css/style.css?v=guoer-wb-v106">
+<link rel="stylesheet" href="assets/css/style.css?v=guoer-wb-v119">
 <script async src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
 <script>
 (function(){
@@ -103,23 +150,24 @@
 
 <div class="toast" id="toast"></div>
 
-<script>window.__APP_VER__="guoer-wb-v106";</script>
-  <script src="assets/js/store.js?v=guoer-wb-v106"></script>
-<script src="assets/js/ui.js?v=guoer-wb-v106"></script>
-<script src="assets/js/ai.js?v=guoer-wb-v106"></script>
-<script src="assets/js/seed.js?v=guoer-wb-v106"></script>
-<script src="assets/js/market.js?v=guoer-wb-v106"></script>
-<script src="assets/js/news.js?v=guoer-wb-v106"></script>
-<script src="assets/js/snapshot.js?v=guoer-wb-v106"></script>
-<script src="assets/js/views-market.js?v=guoer-wb-v106"></script>
-<script src="assets/js/views-market2.js?v=guoer-wb-v106"></script>
-<script src="assets/js/views-analysis.js?v=guoer-wb-v106"></script>
-<script src="assets/js/views-m2560.js?v=guoer-wb-v106"></script>
-<script src="assets/js/views-pickscreen.v103.js?v=guoer-wb-v106"></script>
-<script src="assets/js/views-verify.js?v=guoer-wb-v106"></script>
-<script src="assets/js/views-life.js?v=guoer-wb-v106"></script>
-<script src="assets/js/app.js?v=guoer-wb-v106"></script>
-<!-- PWA Service Worker 统一由 app.js 带版本号注册（sw.js?v=guoer-wb-v106
+<script>window.__APP_VER__="guoer-wb-v119";</script>
+  <script src="assets/js/store.js?v=guoer-wb-v119"></script>
+<script src="assets/js/ui.js?v=guoer-wb-v119"></script>
+<script src="assets/js/ai.js?v=guoer-wb-v119"></script>
+<script src="assets/js/seed.js?v=guoer-wb-v119"></script>
+<script src="assets/js/market.js?v=guoer-wb-v119"></script>
+<script src="assets/js/news.js?v=guoer-wb-v119"></script>
+<script src="assets/js/snapshot.js?v=guoer-wb-v119"></script>
+<script src="assets/js/views-market.js?v=guoer-wb-v119"></script>
+<script src="assets/js/views-market2.js?v=guoer-wb-v119"></script>
+<script src="assets/js/views-analysis.js?v=guoer-wb-v119"></script>
+<script src="assets/js/views-m2560.js?v=guoer-wb-v119"></script>
+<script src="assets/js/views-pickscreen.v105.js?v=guoer-wb-v119"></script>
+<script src="assets/js/views-verify.js?v=guoer-wb-v119"></script>
+<script src="assets/js/views-life.js?v=guoer-wb-v119"></script>
+<script src="assets/js/views-summary.v1.js?v=guoer-wb-v119"></script>
+<script src="assets/js/app.js?v=guoer-wb-v119"></script>
+<!-- PWA Service Worker 统一由 app.js 带版本号注册（sw.js?v=guoer-wb-v119
      此处不得重复注册：不同 scriptURL 会导致两个注册互相覆盖更新，
      触发 controllerchange → reload 死循环（页面一直闪跳） -->
 </body>

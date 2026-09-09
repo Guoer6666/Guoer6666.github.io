@@ -171,16 +171,11 @@ V.verify = (() => {
           + '<span class="m26-stat">达标率 <b class="m26-c-up">' + pctP(cum.tg_rate) + '</b></span>'
           + '</div>';
       }
+      /* 分工指路（2026-09-08 去重）：买卖规则常驻「个股拆解选股」，月/季/年汇总在「周期总结」 */
+      html += '<div class="lg-foot" style="margin:4px 0 10px">📍 本页管<b>复盘与战绩</b>：持仓明细 + 历史已了结。'
+        + '买卖规则见 <b>「个股拆解选股」</b>；月/季/年汇总 → <b>「周期总结」</b>。</div>';
 
-      /* ② 买卖规则 */
-      html += '<div class="lg-rules">'
-        + '<div class="lg-rule"><b class="lg-rk">🎯 买入</b><span>下一交易日<b>开盘价 ≤ 介入上限</b>才买；高开超过上限 → <b>放弃不买</b>。介入上限 = 信号日收盘价。</span></div>'
-        + '<div class="lg-rule"><b class="lg-rk">🛑 止损</b><span>盘中<b>最低价 ≤ 止损价</b> → 卖出。止损价 = max(最近支撑位×0.99, 信号日收盘×0.93)，取更高者。</span></div>'
-        + '<div class="lg-rule"><b class="lg-rk">✅ 达标</b><span>盘中<b>最高价 ≥ 目标价</b> → 卖出。目标价 = 高于现价的最近有效压力位。</span></div>'
-        + '<div class="lg-rule"><b class="lg-rk">💰 卖出</b><span>T+1 开盘买入 → <b>T+2 才能卖</b>（A股 T+1）。顺序：<b>止损优先 &gt; 达标 &gt; 收盘价</b>。</span></div>'
-        + '</div>';
-
-      /* ③ 昨天选出 → 今天买入（持仓中） */
+      /* ② 持仓中：昨天选出 → 今天买入（买卖规则不再重复展示，常驻于「个股拆解选股」页） */
       const holdDay = days.find(d => d.phase === 'holding');
       if (holdDay) {
         const s = holdDay.summary || {};
@@ -198,21 +193,56 @@ V.verify = (() => {
       /* ④ 今天选出 → 下个交易日执行 */
       /* 验证页没有今日 D 列表（那是 pickscreen 页的事），这里跳过或提示 */
 
-      /* ⑤ 历史已了结（折叠） */
-      const doneDays = days.filter(d => d.phase === 'done');
+      /* ⑤ 历史已了结：全量 history 按信号月份分组折叠（2026-09-08 升级：不再只用最近 4 批） */
+      const histAll = LEDGER.history || days;
+      const doneDays = histAll.filter(d => d.phase === 'done');
       if (doneDays.length) {
-        html += '<div class="m26-fold" id="vHist"><div class="m26-fold-h" onclick="this.parentElement.classList.toggle(\'m26-open\')">'
-          + '📁 历史已了结（' + doneDays.length + ' 批）<span class="m26-fold-arrow">▸</span></div>'
-          + '<div class="m26-fold-b">';
+        const groups = {};
         doneDays.forEach(d => {
-          const s = d.summary || {};
-          html += '<div class="lg-block">'
-            + '<div class="lg-block-t">📅 ' + fmtD(d.signal_date) + ' 选出 → ' + fmtD(d.buy_date) + ' 买入'
-            + '<span class="lg-tag lg-tag-done">已了结</span></div>'
-            + '<div class="lg-sub">开仓 ' + s.buy_n + '/' + s.pick_n + '　止损 ' + s.sl_n + '　达标 ' + s.tg_n
-            + '　盈利 ' + s.win_n + '　平均 <b class="' + dirCls(s.avg_ret) + '">' + pctS(s.avg_ret) + '</b></div>';
-          (d.rows || []).forEach((r, i) => { html += card(r, i); });
-          html += '</div>';
+          const k = (d.signal_date || '').slice(0, 7);
+          if (!groups[k]) groups[k] = [];
+          groups[k].push(d);
+        });
+        const months = Object.keys(groups).sort().reverse();
+        html += '<div class="m26-fold" id="vHist"><div class="m26-fold-h" onclick="this.parentElement.classList.toggle(\'m26-open\')">'
+          + '📁 历史已了结（共 ' + doneDays.length + ' 批，按信号月份分组）<span class="m26-fold-arrow">▸</span></div>'
+          + '<div class="m26-fold-b">';
+        months.forEach(m => {
+          const list = groups[m];
+          const monthLabel = m.replace('-', '年') + '月';
+          const ms = list.reduce((acc, d) => {
+            const s = d.summary || {};
+            acc.pick_n += s.pick_n || 0;
+            acc.buy_n += s.buy_n || 0;
+            acc.sl_n += s.sl_n || 0;
+            acc.tg_n += s.tg_n || 0;
+            acc.win_n += s.win_n || 0;
+            if (s.avg_ret) acc.avg_rets.push(s.avg_ret);
+            return acc;
+          }, { pick_n: 0, buy_n: 0, sl_n: 0, tg_n: 0, win_n: 0, avg_rets: [] });
+          const mWinRate = ms.buy_n ? (ms.win_n / ms.buy_n) : 0;
+          const mAvgRet = ms.avg_rets.length ? (ms.avg_rets.reduce((a, b) => a + b, 0) / ms.avg_rets.length) : 0;
+          const mTotalRet = ms.avg_rets.length ? ms.avg_rets.reduce((a, b) => a + b, 0) : 0;
+          html += '<div class="m26-fold">'
+            + '<div class="m26-fold-h" onclick="this.parentElement.classList.toggle(\'m26-open\')">'
+            + '📅 ' + monthLabel + '（' + list.length + ' 批）'
+            + '　选出 ' + ms.pick_n + ' / 买入 ' + ms.buy_n
+            + '　胜率 <b class="' + dirCls(mWinRate - 0.5) + '">' + pctP(mWinRate) + '</b>'
+            + '　平均 <b class="' + dirCls(mAvgRet) + '">' + pctS(mAvgRet) + '</b>'
+            + '　累计 <b class="' + dirCls(mTotalRet) + '">' + pctS(mTotalRet) + '</b>'
+            + '<span class="m26-fold-arrow">▸</span></div>'
+            + '<div class="m26-fold-b">';
+          list.forEach(d => {
+            const s = d.summary || {};
+            html += '<div class="lg-block">'
+              + '<div class="lg-block-t">📅 ' + fmtD(d.signal_date) + ' 选出 → ' + fmtD(d.buy_date) + ' 买入'
+              + '<span class="lg-tag lg-tag-done">已了结</span></div>'
+              + '<div class="lg-sub">开仓 ' + s.buy_n + '/' + s.pick_n + '　止损 ' + s.sl_n + '　达标 ' + s.tg_n
+              + '　盈利 ' + s.win_n + '　平均 <b class="' + dirCls(s.avg_ret) + '">' + pctS(s.avg_ret) + '</b></div>';
+            (d.rows || []).forEach((r, i) => { html += card(r, i); });
+            html += '</div>';
+          });
+          html += '</div></div>';
         });
         html += '</div></div>';
       }

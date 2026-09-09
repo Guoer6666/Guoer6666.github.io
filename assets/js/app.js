@@ -12,7 +12,8 @@ const MENU = [
       { k: 'm2560', label: '2560战法信号', badge: '新' },
       { k: 'holdings', label: '个股逻辑拆解', badge: '新' },
       { k: 'pickscreen', label: '个股拆解选股', badge: '新' },
-      { k: 'verify', label: '选股次日验证', badge: '新' }
+      { k: 'verify', label: '选股次日验证', badge: '新' },
+      { k: 'summary', label: '周期总结', badge: '新' }
     ]
   },
   {
@@ -67,12 +68,24 @@ const App = (() => {
           <span class="ico">${g.icon}</span><span>${g.title}</span><span class="arrow">▼</span>
         </button>
         <div class="nav-items">
-          ${g.items.map(it => `
+          ${g.items.map(it => {
+            const badge = it.badge ? `<span class="badge">${it.badge}</span>` : '';
+            const live = it.live ? `<span class="live" data-livenav="${it.live}"></span>` : '';
+            /* href 项（如独立的周期总结页）走真实跳转，不参与 SPA 路由。
+               自动拼当前版本参数 —— CDN 对不带参数 URL 有顽固边缘缓存，
+               带版本参数可确保每次跳转都拿到最新页面（2026-09-08 缓存事故） */
+            if (it.href) {
+              const v = window.__APP_VER__ || '';
+              const sep = it.href.indexOf('?') >= 0 ? '&' : '?';
+              return `<a class="nav-item" href="${it.href}${sep}v=${v}"><span>${UI.esc(it.label)}</span>${badge}</a>`;
+            }
+            return `
             <button class="nav-item ${it.k === current ? 'active' : ''}" data-go="${it.k}">
               <span>${UI.esc(it.label)}</span>
-              ${it.badge ? `<span class="badge">${it.badge}</span>` : ''}
-              ${it.live ? `<span class="live" data-livenav="${it.live}"></span>` : ''}
-            </button>`).join('')}
+              ${badge}
+              ${live}
+            </button>`;
+          }).join('')}
         </div>
       </div>`).join('');
     paintNavLive();
