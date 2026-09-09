@@ -16,11 +16,26 @@
 (function(){
   var KEY = '__wb_boot_clean__';
   var WINDOW_MS = 8 * 60 * 60 * 1000;
+
+  /* 紧急修复模式：URL 带 _gatefix 时，跳过 8 小时窗口强制清理缓存并重载，
+     解决「旧 index.html 缓存引用已删除的 crypto-gate.js → 脚本 404 → 数据全 404」 */
+  var forceFix = false;
   try {
-    var last = parseInt(sessionStorage.getItem(KEY) || '0', 10);
-    if (Date.now() - last < WINDOW_MS) return;   /* 窗口内：绝不清理，绝不 reload */
-    sessionStorage.setItem(KEY, String(Date.now()));
-  } catch (e) { return; }                        /* 存储不可用：直接放弃自愈，保证不闪屏 */
+    if (new URL(location.href).searchParams.has('_gatefix')) {
+      if (!sessionStorage.getItem('__wb_gatefix_done__')) {
+        sessionStorage.setItem('__wb_gatefix_done__', '1');
+        forceFix = true;
+      }
+    }
+  } catch (e) {}
+
+  if (!forceFix) {
+    try {
+      var last = parseInt(sessionStorage.getItem(KEY) || '0', 10);
+      if (Date.now() - last < WINDOW_MS) return;   /* 窗口内：绝不清理，绝不 reload */
+      sessionStorage.setItem(KEY, String(Date.now()));
+    } catch (e) { return; }                        /* 存储不可用：直接放弃自愈，保证不闪屏 */
+  }
 
   var cleaned = false;
   function reload() {
@@ -61,7 +76,7 @@
 <meta name="apple-mobile-web-app-title" content="过儿的工作台">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="assets/icons/icon-192.png">
-<link rel="stylesheet" href="assets/css/style.css?v=guoer-wb-v124">
+<link rel="stylesheet" href="assets/css/style.css?v=guoer-wb-v125">
 <script async src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
 <script>
 (function(){
@@ -150,26 +165,36 @@
 
 <div class="toast" id="toast"></div>
 
-<script>window.__APP_VER__="guoer-wb-v124";</script>
-  <script src="assets/js/store.js?v=guoer-wb-v124"></script>
-<script src="assets/js/ui.js?v=guoer-wb-v124"></script>
-<script src="assets/js/ai.js?v=guoer-wb-v124"></script>
-<script src="assets/js/seed.js?v=guoer-wb-v124"></script>
-<script src="assets/js/market.js?v=guoer-wb-v124"></script>
-<script src="assets/js/news.js?v=guoer-wb-v124"></script>
-<script src="assets/js/snapshot.js?v=guoer-wb-v124"></script>
-<script src="assets/js/views-market.js?v=guoer-wb-v124"></script>
-<script src="assets/js/views-market2.js?v=guoer-wb-v124"></script>
-<script src="assets/js/views-analysis.js?v=guoer-wb-v124"></script>
-<script src="assets/js/views-m2560.js?v=guoer-wb-v124"></script>
-<script src="assets/js/views-pickscreen.v105.js?v=guoer-wb-v124"></script>
-<script src="assets/js/views-verify.js?v=guoer-wb-v124"></script>
-<script src="assets/js/views-life.js?v=guoer-wb-v124"></script>
-<script src="assets/js/views-summary.v1.js?v=guoer-wb-v124"></script>
+<script>window.__APP_VER__="guoer-wb-v125";</script>
+  <script src="assets/js/store.js?v=guoer-wb-v125"></script>
+<script src="assets/js/ui.js?v=guoer-wb-v125"></script>
+<script src="assets/js/ai.js?v=guoer-wb-v125"></script>
+<script src="assets/js/seed.js?v=guoer-wb-v125"></script>
+<script src="assets/js/market.js?v=guoer-wb-v125"></script>
+<script src="assets/js/news.js?v=guoer-wb-v125"></script>
+<script src="assets/js/snapshot.js?v=guoer-wb-v125"></script>
+<script src="assets/js/views-market.js?v=guoer-wb-v125"></script>
+<script src="assets/js/views-market2.js?v=guoer-wb-v125"></script>
+<script src="assets/js/views-analysis.js?v=guoer-wb-v125"></script>
+<script src="assets/js/views-m2560.js?v=guoer-wb-v125"></script>
+<script src="assets/js/views-pickscreen.v105.js?v=guoer-wb-v125"></script>
+<script src="assets/js/views-verify.js?v=guoer-wb-v125"></script>
+<script src="assets/js/views-life.js?v=guoer-wb-v125"></script>
+<script src="assets/js/views-summary.v1.js?v=guoer-wb-v125"></script>
 <!-- 数据加密门：必须在 app.js 之前同步加载，拦截 /api/reports 请求并解密 -->
-<script src="assets/js/crypto-gate.v124.js?v=guoer-wb-v124"></script>
-<script src="assets/js/app.js?v=guoer-wb-v124"></script>
-<!-- PWA Service Worker 统一由 app.js 带版本号注册（sw.js?v=guoer-wb-v124
+<script src="assets/js/crypto-gate.v124.js?v=guoer-wb-v125"></script>
+<script>
+/* 自检：若 crypto-gate 未成功加载（旧缓存引用已删除的文件 → 404），
+   强制跳到 _gatefix 紧急清理模式，破掉 SW/缓存的旧 index.html */
+if (!window.__wbGateUnlock) {
+  var _u = new URL(location.href);
+  _u.hash = '';
+  _u.searchParams.set('_gatefix', Date.now().toString());
+  location.replace(_u.href);
+}
+</script>
+<script src="assets/js/app.js?v=guoer-wb-v125"></script>
+<!-- PWA Service Worker 统一由 app.js 带版本号注册（sw.js?v=guoer-wb-v125
      此处不得重复注册：不同 scriptURL 会导致两个注册互相覆盖更新，
      触发 controllerchange → reload 死循环（页面一直闪跳） -->
 </body>
