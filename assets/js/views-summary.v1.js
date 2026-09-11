@@ -61,6 +61,8 @@
       '.sm-badge{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:1px}',
       '.sm-badge.done{background:rgba(18,161,80,.13);color:#12a150}',
       '.sm-badge.hold{background:rgba(255,159,10,.15);color:#c47b00}',
+      '.sm-badge.skip{background:rgba(140,140,150,.16);color:#6b6b76}',
+      '.sm-badge.empty{background:rgba(56,110,216,.14);color:#2f6bd8}',
       '.sm-month{margin-top:10px}',
       '.sm-batch{border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel);padding:9px 11px;margin-top:8px}',
       '.sm-batch-t{font-size:12.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}',
@@ -119,17 +121,26 @@
   function batchHtml(b) {
     var s = b.summary || {};
     var h = [];
-    var settled = !!b.settled;
+    var phase = b.phase || (b.settled ? 'done' : 'holding');
+    var badgeCls = 'hold', badgeTxt = '持仓中';
+    if (phase === 'done') { badgeCls = 'done'; badgeTxt = '已了结'; }
+    else if (phase === 'skipped') { badgeCls = 'skip'; badgeTxt = '未触发/跳过'; }
+    else if (phase === 'empty') { badgeCls = 'empty'; badgeTxt = '空仓'; }
     h.push('<div class="sm-batch">');
-    h.push('<div class="sm-batch-t">📅 ' + fmtD(b.signal_date) + ' 选出 → ' + fmtD(b.buy_date) + ' 买入'
-      + '<span class="sm-badge ' + (settled ? 'done' : 'hold') + '">'
-      + (settled ? '已了结' : '持仓中') + '</span></div>');
-    h.push('<div class="sm-batch-s">'
-      + '选出 ' + num(s.pick_n) + '　开仓 ' + num(s.buy_n) + '　放弃 ' + num(s.skip_n)
-      + '　止损 ' + num(s.sl_n) + '　达标 ' + num(s.tg_n) + '　盈利 ' + num(s.win_n)
-      + '　胜率 <b>' + pctPlain(s.win_rate) + '</b>'
-      + '　平均 <b class="' + cls(s.avg_ret) + '">' + pct(s.avg_ret) + '</b>'
-      + '</div>');
+    if (phase === 'empty') {
+      h.push('<div class="sm-batch-t">📅 ' + fmtD(b.signal_date) + ' 盘后选股'
+        + '<span class="sm-badge ' + badgeCls + '">' + badgeTxt + '</span></div>');
+      h.push('<div class="sm-batch-s">' + esc(b.empty_reason || '当日未产出选股名单（空仓 / 0 只入选）') + '</div>');
+    } else {
+      h.push('<div class="sm-batch-t">📅 ' + fmtD(b.signal_date) + ' 选出 → ' + fmtD(b.buy_date) + ' 买入'
+        + '<span class="sm-badge ' + badgeCls + '">' + badgeTxt + '</span></div>');
+      h.push('<div class="sm-batch-s">'
+        + '选出 ' + num(s.pick_n) + '　开仓 ' + num(s.buy_n) + '　放弃 ' + num(s.skip_n)
+        + '　止损 ' + num(s.sl_n) + '　达标 ' + num(s.tg_n) + '　盈利 ' + num(s.win_n)
+        + '　胜率 <b>' + pctPlain(s.win_rate) + '</b>'
+        + '　平均 <b class="' + cls(s.avg_ret) + '">' + pct(s.avg_ret) + '</b>'
+        + '</div>');
+    }
 
     var rows = b.rows || [];
     if (rows.length) {
