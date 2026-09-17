@@ -1568,6 +1568,25 @@ a.flash:hover .fgo{opacity:1}
 .m26-layer-d{font-size:11.5px;color:var(--ink-2);line-height:1.85;word-break:break-word;overflow-wrap:anywhere}
 .m26-layer-d b{color:var(--ink-1)}
 .m26-layer-d .m26-step{display:block;margin:3px 0 3px 6px;padding-left:8px;border-left:2px solid var(--line)}
+
+/* 中期体检标记（v127）· 选股名单复用「个股逻辑拆解」九模块引擎
+   配色沿用 A 股习惯：多头=红、空头=绿；⚠️ 表示与选股结论冲突需警惕 */
+.m26-ck-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 6px}
+.m26-ck-all{padding:6px 14px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;
+  background:var(--panel-2);color:var(--ink-1);box-shadow:inset 0 0 0 1px var(--line)}
+.m26-ck-all:hover{box-shadow:inset 0 0 0 1px var(--ink-3)}
+.m26-ck-btn{padding:3px 9px;border-radius:999px;font-size:11.5px;cursor:pointer;
+  background:var(--panel-2);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--line);white-space:nowrap}
+.m26-ck-btn:hover{color:var(--ink-1);box-shadow:inset 0 0 0 1px var(--ink-3)}
+.m26-ck{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;
+  white-space:nowrap;cursor:help}
+.m26-ck-good{color:var(--up);background:color-mix(in srgb,var(--up) 10%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--up) 32%,transparent)}
+.m26-ck-mid{color:var(--ink-2);background:var(--panel-2);box-shadow:inset 0 0 0 1px var(--line)}
+.m26-ck-bad{color:var(--down);background:color-mix(in srgb,var(--down) 10%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--down) 32%,transparent)}
+.m26-ck-run{font-size:11.5px;color:var(--ink-3)}
+.m26-ck-err{font-size:11.5px;color:var(--amber);cursor:help}
 .m26-arrow{text-align:center;color:var(--ink-3);font-size:11px;line-height:1.4;margin:2px 0}
 
 /* 选股次日验证（v-verify） */
