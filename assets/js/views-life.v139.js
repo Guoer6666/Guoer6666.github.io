@@ -94,6 +94,11 @@ V.routine = {
         body: checklist('routine_goals', SEED.routineGoals)
       })}
     `;
+  },
+  mount() {
+    loadLedger().then(function (L) {
+      setTxt('[data-streak]', ledgerStreak(L));
+    });
   }
 };
 
@@ -130,10 +135,17 @@ function ledgerStreak(L) {
     if (h.sell_date) set[h.sell_date] = 1;
   });
   (L.days || []).forEach(function (d) { if (d.signal_date) set[d.signal_date] = 1; });
-  var n = 0, dt = new Date();
+  function fmt(x) { return x.getFullYear() + '-' + DT.pad(x.getMonth() + 1) + '-' + DT.pad(x.getDate()); }
+  // 锚点：今天或最近一个有记录的日子（兼容周末/非交易日）
+  var anchor = null, t = new Date();
+  for (var k = 0; k < 6; k++) {
+    if (set[fmt(t)]) { anchor = new Date(t); break; }
+    t.setDate(t.getDate() - 1);
+  }
+  if (!anchor) return 0;
+  var n = 0, d = anchor;
   for (;;) {
-    var k = dt.getFullYear() + '-' + DT.pad(dt.getMonth() + 1) + '-' + DT.pad(dt.getDate());
-    if (set[k]) { n++; dt.setDate(dt.getDate() - 1); } else break;
+    if (set[fmt(d)]) { n++; d.setDate(d.getDate() - 1); } else break;
     if (n > 400) break;
   }
   return n;
@@ -415,6 +427,13 @@ V.material = {
             { k: 'date', label: '收集日期', w: 118, type: 'date' }
           ]
         })
+      })}
+
+      ${UI.card({
+        title: '💡 今日自动候选（自动）',
+        sub: '来自今日个股拆解选股 · 每日跑批更新，免手填',
+        tight: true,
+        body: '<div data-mat-auto><div class="sm-empty">加载中…</div></div>'
       })}
 
       ${UI.card({
