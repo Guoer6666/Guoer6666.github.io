@@ -9,7 +9,7 @@ const MENU = [
       { k: 'asia', label: '日韩股市', live: 'asia' },
       { k: 'outlook', label: '次日盘前总结' },
       { k: 'sentiment', label: '大盘总览', live: 'a' },
-      { k: 'm2560', label: '2560战法信号', badge: '新' },
+      { k: 'm2560', label: '2560观察池', badge: '' },
       { k: 'holdings', label: '个股逻辑拆解', badge: '新' },
       { k: 'pickscreen', label: '个股拆解选股', badge: '新' },
       { k: 'verify', label: '选股次日验证', badge: '新' },

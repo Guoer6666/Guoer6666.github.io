@@ -372,8 +372,8 @@ const M2560 = (() => {
    V.m2560 · 视图：市场状态机 + 股票池 + 信号扫描结果
    ============================================================ */
 V.m2560 = {
-  title: '2560战法信号',
-  desc: 'MA25趋势 × 量能 × 位置 · A/B/C/D四态 · 6态市场状态机 · 真实数据可复核',
+  title: '2560观察池',
+  desc: 'MA25趋势 × 量能 × 位置 · A/B/C/D四态 · 6态市场状态机 · 观察/参考 · 非买点系统 · 真实数据可复核',
 
   _scanning: false,
 
@@ -570,6 +570,19 @@ V.m2560 = {
     const m = Store.get('m2560_verify', null);
     const p = Store.get('pick_verify', null);
     const pct = x => (x == null ? '—' : (x * 100).toFixed(1) + '%');
+    // 诚实口径：2560 的"后5日胜率"只统计已跑满5日窗口(preview=false)的信号日，预览日不计入（避免混合值虚高）
+    let mHonest = null, pureDays = 0, totalDays = 0;
+    if (m && Array.isArray(m.samples) && m.samples.length) {
+      totalDays = m.samples.length;
+      const pure = m.samples.filter(s => !s.preview);
+      pureDays = pure.length;
+      let n = 0, win = 0, avg = 0;
+      pure.forEach(s => { n += (s.n || 0); win += (s.win_n || 0); avg += (s.avg_ret || 0) * (s.n || 0); });
+      if (n > 0) mHonest = { n_total: n, win_rate: win / n, avg_ret: avg / n, _pureDays: pureDays, _totalDays: totalDays };
+    } else if (m) {
+      // 兼容旧结构（无 samples）：退回混合值并标注样本不足
+      mHonest = { n_total: m.n_total, win_rate: m.win_rate, avg_ret: m.avg_ret, _pureDays: 0, _totalDays: 0 };
+    }
     const sec = (d, label, method) => {
       if (!d) return '<div class="m26-cmp-col"><div class="m26-cmp-h">' + label + '</div>'
         + '<div class="m26-cmp-empty">暂无样本（每日跑批累积中）</div>'
@@ -581,13 +594,18 @@ V.m2560 = {
         + '<div class="m26-cmp-metric"><span>平均收益</span><b class="' + ((d.avg_ret || 0) >= 0 ? 'm26-c-up' : 'm26-c-down') + '">' + pct(d.avg_ret) + '</b></div>'
         + '<div class="m26-cmp-method">' + method + '</div></div>';
     };
-    return '<div class="card"><div class="card-head"><h3>📊 双系统胜率对比</h3>'
-      + '<span class="sub">各自独立验证 · 口径不同仅作参考对比，互不干扰</span></div><div class="card-body">'
+    const mLabel = '🟥 2560观察池' + (mHonest && mHonest._pureDays ? '' : (m ? ' · 样本不足' : ''));
+    const mMethod = (mHonest && mHonest._totalDays)
+      ? '信号日后持有满5日收益 · 仅 ' + mHonest._pureDays + '/' + mHonest._totalDays + ' 个信号日已跑满（其余为1日预览，不计入此胜率）'
+      : '信号日后持有满5日收益（观察池回溯，非买点胜率）';
+    return '<div class="card"><div class="card-head"><h3>📊 双系统回溯对比</h3>'
+      + '<span class="sub">各自独立验证 · 2560 为观察参考，非买点系统</span></div><div class="card-body">'
       + '<div class="m26-cmp">' + sec(p, '🟦 盘后个股筛选', '次日(T+1)收益率：开盘买入、T+2可卖，看次日收盘')
-      + sec(m, '🟥 2560战法' + (m && m.preview ? ' · 预览' : ''), (m && m.preview ? '信号后' + m.hold_days + '日（预览·未满' + (m.canonical_days || 5) + '日）' : '信号后' + (m ? m.hold_days : 5) + '日') + '收益率：趋势回踩确认后最小持有' + (m ? (m.canonical_days || 5) : 5) + '天')
+      + sec(mHonest, mLabel, mMethod)
       + '</div>'
-      + '<div class="m26-cmp-note">两套系统选股逻辑、持有周期、触发条件完全不同，胜率不可直接横比；此处仅并列展示各自历史表现作为风格参考。2560 为「中短线趋势·非超短」系统。'
-      + (m && m.preview ? '<br><b style="color:var(--amber)">⚠️ 2560 当前为预览数据</b>：样本来自 A 观察池（D=0 暂无稳健买点样本），窗口未满 ' + (m.canonical_days || 5) + ' 日，待满期后转正为真实 D 信号胜率。' : '') + '</div>'
+      + '<div class="m26-cmp-note">两套系统选股逻辑、持有周期、触发条件完全不同，胜率不可直接横比；此处仅并列展示各自历史表现作为风格参考。'
+      + '<br><b style="color:var(--amber)">⚠️ 2560 当前为纯观察池</b>：A级观察 / C止跌 / B回踩 仅供跟踪，D买点长期为0（趋势上行市结构性休眠，非故障）。上方"胜率"为已跑满5日窗口的真实回溯（' + (mHonest ? mHonest._pureDays : 0) + ' 个信号日、' + (mHonest ? mHonest.n_total : 0) + ' 样本），预览日不计入，不代表未来收益。'
+      + '</div>'
       + '</div></div>';
   },
 
@@ -926,8 +944,8 @@ V.m2560 = {
     let h = '';
 
     /* 顶部标识条：明确 2560 是中短线趋势系统、非超短战法，与盘后个股筛选互不串台 */
-    h += '<div class="m26-idbar"><span class="m26-id-tag">中短线趋势系统</span>'
-      + '<span class="m26-id-note">2560战法 · 趋势回踩+放量确认 · 持仓 5-12 天 · <b>非超短/打板战法</b> · 与「盘后个股筛选」为两套独立体系，互不干扰</span></div>';
+    h += '<div class="m26-idbar"><span class="m26-id-tag">观察池 · 非买点</span>'
+      + '<span class="m26-id-note">2560战法 · 趋势回踩+放量确认 · 持仓 5-12 天 · <b>仅作观察跟踪，不构成买入信号</b> · 与「盘后个股筛选」为两套独立体系，互不干扰</span></div>';
 
     /* ① 全市场精筛结果（首屏最高优先级） */
     if (full) {
