@@ -61,7 +61,7 @@ V.routine = {
       ${UI.kpi([
         { label: '近7日运动', value: sportDays, delta: '天', dir: sportDays >= 4 ? 'up' : 'down' },
         { label: '平均睡眠', value: avgSleep, delta: '小时/天', dir: parseFloat(avgSleep) >= 7 ? 'up' : 'down' },
-        { label: '连续打卡', value: streak(rows), delta: '天' },
+        { label: '连续实盘打卡', value: '<b data-streak>—</b>', delta: '天 · 取自台账' },
         { label: '本月记录', value: rows.filter(r => (r.date || '').startsWith(DT.monthKey())).length, delta: '天' }
       ])}
 
@@ -107,6 +107,38 @@ function streak(rows) {
   }
   return n;
 }
+
+/* ============ 自动数据源（接实盘台账 / 选股，免手填） ============ */
+let _ledgerPromise = null;
+function loadLedger() {
+  if (_ledgerPromise) return _ledgerPromise;
+  _ledgerPromise = fetch('./api/reports/verify_ledger.json?_=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .catch(function () { return null; });
+  return _ledgerPromise;
+}
+function ledgerMonth(L, key) {
+  if (!L || !L.period || !L.period.month) return null;
+  return L.period.month.filter(function (m) { return m.key === key; })[0] || null;
+}
+function ledgerStreak(L) {
+  if (!L) return 0;
+  var set = {};
+  (L.history || []).forEach(function (h) {
+    if (h.signal_date) set[h.signal_date] = 1;
+    if (h.buy_date) set[h.buy_date] = 1;
+    if (h.sell_date) set[h.sell_date] = 1;
+  });
+  (L.days || []).forEach(function (d) { if (d.signal_date) set[d.signal_date] = 1; });
+  var n = 0, dt = new Date();
+  for (;;) {
+    var k = dt.getFullYear() + '-' + DT.pad(dt.getMonth() + 1) + '-' + DT.pad(dt.getDate());
+    if (set[k]) { n++; dt.setDate(dt.getDate() - 1); } else break;
+    if (n > 400) break;
+  }
+  return n;
+}
+function setTxt(sel, val) { var el = document.querySelector(sel); if (el) el.innerHTML = val; }
 
 /* ================= 📝 交易心态周记 ================= */
 V.mindset = {
@@ -184,10 +216,10 @@ V.mindset = {
   }
 };
 
-/* ================= 🎯 月度交易收益目标 ================= */
+/* ================= 🎯 月度交易收益目标（目标自设·当前自动） ================= */
 V.goal = {
   title: '月度交易收益目标',
-  desc: '目标进度跟踪',
+  desc: '目标自设 · 当前收益自动取自实盘台账',
   render() {
     const g = Store.get('goal_' + DT.monthKey(), { target: 10, current: 0, capital: 100000, maxDd: 5 });
     const pct = g.target ? Math.max(0, Math.min(100, (parseFloat(g.current) || 0) / parseFloat(g.target) * 100)) : 0;
@@ -210,15 +242,7 @@ V.goal = {
           <div class="form-row">
             ${inp('capital', '本金', '元')}
             ${inp('target', '目标收益', '%')}
-            ${inp('current', '当前收益', '%')}
             ${inp('maxDd', '最大回撤容忍', '%')}
-          </div>
-
-          <div class="section-title">收益进度 ${pct.toFixed(0)}%</div>
-          <div class="progress ${pct >= 100 ? 'green' : (parseFloat(g.current) || 0) < 0 ? 'red' : ''}"><i style="width:${pct}%"></i></div>
-          <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-3);margin-top:5px">
-            <span>当前 ${UI.sign(g.current, 2, '%')}</span>
-            <span>目标 ${UI.num(g.target, 1)}%</span>
           </div>
 
           <div class="section-title">时间进度 ${timePct}%</div>
@@ -227,13 +251,18 @@ V.goal = {
             ${pct >= timePct ? '✅ 进度领先于时间，保持节奏' : '⚠️ 进度落后于时间，但不要为了赶进度放大仓位'}
           </div>
 
-          <div class="section-title">折算金额</div>
+          <div class="section-title">折算金额（按目标值估算）</div>
           <div class="kpi-grid">
             ${kpiMini('目标金额', ((parseFloat(g.capital) || 0) * (parseFloat(g.target) || 0) / 100).toFixed(0) + ' 元')}
-            ${kpiMini('当前盈亏', ((parseFloat(g.capital) || 0) * (parseFloat(g.current) || 0) / 100).toFixed(0) + ' 元', UI.dirCls(g.current))}
-            ${kpiMini('还差', (((parseFloat(g.capital) || 0) * ((parseFloat(g.target) || 0) - (parseFloat(g.current) || 0)) / 100)).toFixed(0) + ' 元')}
             ${kpiMini('回撤红线', '-' + UI.num(g.maxDd, 1) + '%', 'down')}
           </div>`
+      })}
+
+      ${UI.card({
+        title: '📊 本月实盘进度（自动）',
+        sub: '当前收益取自 verify_ledger，每日跑批更新',
+        tight: true,
+        body: '<div data-goal-auto><div class="sm-empty">加载中…</div></div>'
       })}
 
       ${UI.card({
@@ -271,6 +300,26 @@ V.goal = {
         Store.set(key, g);
         App.refresh();
       });
+    });
+    loadLedger().then(function (L) {
+      var el = document.querySelector('[data-goal-auto]');
+      if (!el) return;
+      var m = ledgerMonth(L, DT.monthKey());
+      if (!m) { el.innerHTML = '<div class="sm-empty">本月暂无实盘结算记录</div>'; return; }
+      var cur = (m.total_ret || 0) * 100;
+      var g = Store.get('goal_' + DT.monthKey(), {});
+      var target = parseFloat(g.target) || 0;
+      var pct = target ? Math.min(100, cur / target * 100) : 0;
+      var remain = target - cur;
+      el.innerHTML =
+        '<div class="section-title">实盘收益进度 ' + pct.toFixed(0) + '%</div>'
+        + '<div class="progress ' + (pct >= 100 ? 'green' : cur < 0 ? 'red' : '') + '"><i style="width:' + pct + '%"></i></div>'
+        + '<div class="kpi-grid">'
+        + kpiMini('当前实盘', (cur >= 0 ? '+' : '') + cur.toFixed(2) + '%', cur >= 0 ? 'up' : 'down')
+        + kpiMini('月度目标', UI.num(target, 1) + '%')
+        + kpiMini('还差', (remain >= 0 ? '+' : '') + remain.toFixed(2) + '%', remain >= 0 ? 'up' : 'down')
+        + kpiMini('信号/买入', (m.pick_n || 0) + ' / ' + (m.buy_n || 0))
+        + '</div>';
     });
   }
 };
@@ -374,6 +423,28 @@ V.material = {
         body: UI.textarea('materials_scratch', '碎片灵感、想验证的假设、想复盘的个股…', 150)
       })}
     `;
+  },
+  mount() {
+    var el = document.querySelector('[data-mat-auto]');
+    if (!el) return;
+    Promise.all([
+      fetch('./api/reports/pick_latest.json?_=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+      fetch('./api/reports/m2560_latest.json?_=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    ]).then(function (res) {
+      var pick = res[0], m2 = res[1], html = '';
+      if (pick && pick.dList && pick.dList.length) {
+        html += '<div class="section-title">📌 今日个股拆解选股（' + pick.dList.length + '只）</div><div class="news-list">' + pick.dList.slice(0, 8).map(function (p) {
+          var adv = (p.advice && p.advice.length) ? p.advice[0] : (p.industry || '');
+          return '<div class="news-item"><div class="nt"><span class="dot"></span><h4>' + UI.esc(p.name || '') + ' <span class="tag">' + UI.esc(p.code || '') + '</span> <span class="tag tag-pink">评分' + UI.esc(p.score != null ? p.score : '') + '</span></h4></div><p>' + UI.esc(adv) + '</p></div>';
+        }).join('') + '</div>';
+      }
+      if (m2 && m2.records && m2.records.length) {
+        html += '<div class="section-title">🔭 2560 观察池（' + m2.records.length + '只）</div><div class="news-list">' + m2.records.slice(0, 8).map(function (p) {
+          return '<div class="news-item"><div class="nt"><span class="dot"></span><h4>' + UI.esc(p.name || '') + ' <span class="tag">' + UI.esc(p.code || '') + '</span> <span class="tag">' + UI.esc(p.status || '') + '</span></h4></div><p>' + UI.esc(p.reason || p.note || '') + '</p></div>';
+        }).join('') + '</div>';
+      }
+      el.innerHTML = html || '<div class="sm-empty">今日暂无选股产出</div>';
+    });
   }
 };
 
@@ -422,50 +493,54 @@ V.tools = {
   }
 };
 
-/* ================= 🎨 实盘每日记录 ================= */
+/* ================= 🎨 实盘每日记录（自动同步） ================= */
 V.journal = {
   title: '实盘每日记录',
-  desc: '每日交易明细 · 一天一行',
+  desc: '自动同步自实盘台账 · 数据来自 verify_ledger，无需手填',
   render() {
-    const rows = Store.rows('journal', SEED.journal);
-    const valid = rows.filter(r => r.pnl !== '' && r.pnl != null && !isNaN(parseFloat(r.pnl)));
-    const win = valid.filter(r => parseFloat(r.pnl) > 0).length;
-    const sum = valid.reduce((s, r) => s + parseFloat(r.pnl), 0);
-    const winRate = valid.length ? Math.round(win / valid.length * 100) : 0;
-    const best = valid.length ? Math.max(...valid.map(r => parseFloat(r.pnl))) : 0;
-    const worst = valid.length ? Math.min(...valid.map(r => parseFloat(r.pnl))) : 0;
-
     return `
       ${UI.kpi([
-        { label: '累计收益', value: `<span class="${UI.dirCls(sum)}">${UI.sign(sum, 2, '%')}</span>`, delta: `${valid.length} 个交易日`, dir: sum >= 0 ? 'up' : 'down' },
-        { label: '胜率', value: winRate + '%', delta: `${win} 胜 ${valid.length - win} 负`, dir: winRate >= 50 ? 'up' : 'down' },
-        { label: '最佳单日', value: `<span class="up">${UI.sign(best, 2, '%')}</span>`, delta: '单日最大盈利', dir: 'up' },
-        { label: '最差单日', value: `<span class="down">${UI.sign(worst, 2, '%')}</span>`, delta: '单日最大亏损', dir: 'down' }
+        { label: '累计信号', value: '<b data-j-n>—</b>', delta: '笔', dir: 'up' },
+        { label: '胜率', value: '<b data-j-wr>—</b>', delta: '已结算', dir: 'up' },
+        { label: '平均收益', value: '<b data-j-avg>—</b>', delta: '每笔', dir: 'up' },
+        { label: '止损率', value: '<b data-j-sl>—</b>', delta: '触止损占比', dir: 'down' }
       ])}
 
       ${UI.card({
-        title: '📔 每日明细',
-        sub: '收益率填百分比数字即可',
+        title: '📔 实盘台账（自动）',
+        sub: '数据来自 verify_ledger.json，每日跑批自动更新 · 不重复手填',
         tight: true,
-        body: UI.table({
-          key: 'journal',
-          wide: true,
-          addLabel: '+ 记录今日',
-          seed: SEED.journal,
-          onChange: () => App.refresh(),
-          cols: [
-            { k: 'date', label: '日期', w: 118, type: 'date' },
-            { k: 'main', label: '主要操作', w: 150, ph: '买入XX / 清仓XX' },
-            { k: 'pnl', label: '当日盈亏%', w: 100, type: 'number', num: true, cls: r => UI.dirCls(r.pnl) },
-            { k: 'position', label: '收盘仓位%', w: 100, type: 'number', num: true },
-            { k: 'mood', label: '心态', w: 88, type: 'select', opts: ['平稳', '兴奋', '焦虑', '后悔', '麻木'], center: true },
-            { k: 'right', label: '做对的', w: 170 },
-            { k: 'wrong', label: '做错的', w: 170 },
-            { k: 'score', label: '自评', w: 74, type: 'select', opts: ['A', 'B', 'C', 'D'], center: true }
-          ]
-        })
+        body: '<div data-j-body><div class="sm-empty">加载中…</div></div>'
+      })}
+
+      ${UI.card({
+        title: '📝 复盘备注',
+        sub: '可选 · 自动保存（不影响上方自动数据）',
+        body: UI.textarea('journal_note_auto', '对今日实盘的补充感想…', 110)
       })}
     `;
+  },
+  mount() {
+    loadLedger().then(function (L) {
+      if (!L) { setTxt('[data-j-body]', '<div class="sm-empty">台账加载失败，请确认已跑批生成 verify_ledger.json</div>'); return; }
+      var cum = L.cum || {};
+      setTxt('[data-j-n]', cum.n_total != null ? cum.n_total : '—');
+      setTxt('[data-j-wr]', cum.win_rate != null ? (cum.win_rate * 100).toFixed(1) + '%' : '—');
+      setTxt('[data-j-avg]', cum.avg_ret != null ? (cum.avg_ret >= 0 ? '+' : '') + (cum.avg_ret * 100).toFixed(2) + '%' : '—');
+      setTxt('[data-j-sl]', cum.sl_rate != null ? (cum.sl_rate * 100).toFixed(1) + '%' : '—');
+      var hist = (L.history || []).slice().sort(function (a, b) { return (b.signal_date || '') > (a.signal_date || '') ? 1 : -1; });
+      var rows = hist.map(function (h) {
+        var s = h.summary || {};
+        var nm = (h.rows && h.rows[0]) ? (h.rows[0].name || h.rows[0].code || '') : '—';
+        return '<tr><td>' + UI.esc(h.signal_date || '') + '</td>'
+          + '<td>' + UI.esc(nm) + '</td>'
+          + '<td>' + (h.rows ? h.rows.length : 0) + '只</td>'
+          + '<td>' + (s.win_n || 0) + '/' + (s.pick_n || 0) + '</td>'
+          + '<td class="' + ((s.avg_ret || 0) >= 0 ? 'up' : 'down') + '">' + ((s.avg_ret || 0) >= 0 ? '+' : '') + (s.avg_ret * 100).toFixed(2) + '%</td>'
+          + '<td>' + (h.settled ? '✅已结算' : '⏳' + UI.esc(h.phase || '')) + '</td></tr>';
+      }).join('');
+      setTxt('[data-j-body]', '<table class="tbl"><thead><tr><th>信号日</th><th>代表标的</th><th>标的数</th><th>胜/总</th><th>平均收益</th><th>状态</th></tr></thead><tbody>' + (rows || '<tr><td colspan="6">暂无记录</td></tr>') + '</tbody></table>');
+    });
   }
 };
 

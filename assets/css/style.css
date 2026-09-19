@@ -1601,3 +1601,11 @@ a.flash:hover .fgo{opacity:1}
 .c-bad{color:#d8453a;font-weight:650}
 .verify-root .m26-card{margin-bottom:14px}
 .verify-root .m26-card-h{padding:10px 12px;font-size:12.5px;font-weight:750;border-bottom:1px solid var(--line);background:var(--panel-2)}
+
+/* ---- 自动台账表格（实盘记录等只读表） ---- */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{color:var(--ink-3);font-weight:600;text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:7px 8px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+.tbl tr:hover td{background:var(--panel-2)}
+.tbl .up{color:#1f9d55;font-weight:600}
+.tbl .down{color:#d8453a;font-weight:600}
