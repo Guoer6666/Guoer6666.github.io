@@ -410,6 +410,13 @@ V.material = {
   render() {
     return `
       ${UI.card({
+        title: '💡 今日自动候选（自动）',
+        sub: '来自今日个股拆解选股 · 每日跑批更新，免手填',
+        tight: true,
+        body: '<div data-mat-auto><div class="sm-empty">加载中…</div></div>'
+      })}
+
+      ${UI.card({
         title: '🗃️ 素材库',
         sub: '经典案例、图表、金句',
         tight: true,
@@ -427,13 +434,6 @@ V.material = {
             { k: 'date', label: '收集日期', w: 118, type: 'date' }
           ]
         })
-      })}
-
-      ${UI.card({
-        title: '💡 今日自动候选（自动）',
-        sub: '来自今日个股拆解选股 · 每日跑批更新，免手填',
-        tight: true,
-        body: '<div data-mat-auto><div class="sm-empty">加载中…</div></div>'
       })}
 
       ${UI.card({
