@@ -10,7 +10,8 @@
   'use strict';
 
   var DATA = null;
-  var TAB = 'month';   /* month | quarter | year */
+  var LEARN = null;    /* 学习模式数据（learning_summary.json） */
+  var TAB = 'month';   /* month | quarter | year | learn */
 
   /* ---------- 工具函数 ---------- */
   function esc(s) {
@@ -69,7 +70,9 @@
       '.sm-batch-t{font-size:12.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}',
       '.sm-batch-s{font-size:11px;color:var(--ink-3);margin:3px 0 7px;line-height:1.6}',
       '.sm-empty{padding:28px 12px;text-align:center;color:var(--ink-3);font-size:13px}',
-      '.sm-tip{font-size:11.5px;color:var(--ink-3);padding:8px 12px;background:var(--panel-2);border:1px dashed var(--line);border-radius:var(--radius-sm);margin-top:12px;line-height:1.7}'
+      '.sm-tip{font-size:11.5px;color:var(--ink-3);padding:8px 12px;background:var(--panel-2);border:1px dashed var(--line);border-radius:var(--radius-sm);margin-top:12px;line-height:1.7}',
+      '.sm-verdict{border-left:4px solid #7c4dff;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12.5px;line-height:1.7;background:var(--panel)}',
+      '.sm-verdict b{color:var(--ink)}'
     ].join('\n');
     document.head.appendChild(st);
   }
@@ -201,6 +204,153 @@
     return h.join('');
   }
 
+  /* ============================================================
+     学习模式（只读观测）· 在「周期总结」页内新增「学习」标签
+     数据：fetch ./api/reports/learning_summary.json
+     ============================================================ */
+  var CORR_KEYS = ['score', 'alpha20', 'volRatio', 'flow', 'rr', 'atrPct'];
+  var CORR_LABELS = {
+    'score': '综合得分', 'alpha20': '20日超额α', 'volRatio': '量比',
+    'flow': '主力净流入%', 'rr': '盈亏比', 'atrPct': 'ATR振幅%'
+  };
+
+  function bandsTable(title, bands) {
+    var h = ['<div style="margin-bottom:12px">'
+      + '<div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:5px">' + esc(title) + '</div>'];
+    h.push('<table class="sm-tbl"><thead><tr><th class="l">档位</th><th>样本</th><th>胜率</th><th>平均收益</th></tr></thead><tbody>');
+    var any = false;
+    var arr = bands || [];
+    for (var i = 0; i < arr.length; i++) {
+      var b = arr[i] || {};
+      if (num(b.n) === 0) continue;
+      any = true;
+      h.push('<tr><td class="l">' + esc(b.label) + '</td><td>' + num(b.n) + '</td>'
+        + '<td class="' + cls(b.win == null ? null : b.win - 0.5) + '">' + pctPlain(b.win) + '</td>'
+        + '<td class="' + cls(b.avg) + '">' + pct(b.avg) + '</td></tr>');
+    }
+    if (!any) h.push('<tr><td colspan="4" class="sm-flat">该因子样本无方差，无法区分胜负</td></tr>');
+    h.push('</tbody></table></div>');
+    return h.join('');
+  }
+
+  function corrTable(corr) {
+    var h = ['<div class="card"><div class="card-head"><h3>🔗 因子 ↔ 收益 相关系数 (Pearson r)</h3>'
+      + '<span class="sub">样本有限，仅供方向参考，勿单凭此改参数</span></div><div class="card-body">'];
+    h.push('<table class="sm-tbl"><thead><tr><th class="l">因子</th><th>r</th><th>解读</th></tr></thead><tbody>');
+    for (var i = 0; i < CORR_KEYS.length; i++) {
+      var k = CORR_KEYS[i];
+      var v = (corr || {})[k];
+      var interp;
+      if (v == null) interp = '样本不足';
+      else if (Math.abs(v) >= 0.5) interp = '中强相关(' + (v > 0 ? '正' : '负') + ')';
+      else if (Math.abs(v) >= 0.3) interp = '弱相关(' + (v > 0 ? '正' : '负') + ')';
+      else interp = '基本无关';
+      h.push('<tr><td class="l">' + esc(CORR_LABELS[k] || k) + '</td><td>' + (v == null ? '—' : v.toFixed(2)) + '</td><td>' + esc(interp) + '</td></tr>');
+    }
+    h.push('</tbody></table></div></div>');
+    return h.join('');
+  }
+
+  function healthTable(L) {
+    var hi = L.hi_rr_wr, lo = L.lo_rr_wr;
+    var rrPredict = (hi != null && lo != null && hi > lo + 0.1) ? 'rr 有预测力' : 'rr 区分度弱';
+    var sl = L.sl_rate, tg = L.tg_rate;
+    var rows = [
+      ['止损先触发率', pctPlain(sl), sl > 0.4 ? '偏高 → 止损偏紧或买点偏高' : '可接受'],
+      ['目标达成率', pctPlain(tg), tg < 0.3 ? '偏低 → 目标设得偏乐观' : '合理'],
+      ['高盈亏比(rr≥5)胜率', hi == null ? '—' : pctPlain(hi), rrPredict],
+      ['低盈亏比(rr<5)胜率', lo == null ? '—' : pctPlain(lo), '—']
+    ];
+    var h = ['<div class="card"><div class="card-head"><h3>🩺 买卖点规则体检</h3>'
+      + '<span class="sub">止损 / 目标设得合不合理</span></div><div class="card-body">'];
+    h.push('<table class="sm-tbl"><thead><tr><th class="l">指标</th><th>数值</th><th>解读</th></tr></thead><tbody>');
+    for (var i = 0; i < rows.length; i++) {
+      h.push('<tr><td class="l">' + esc(rows[i][0]) + '</td><td>' + rows[i][1] + '</td><td class="l">' + esc(rows[i][2]) + '</td></tr>');
+    }
+    h.push('</tbody></table></div></div>');
+    return h.join('');
+  }
+
+  function regimeTable(regime) {
+    var h = ['<div class="card"><div class="card-head"><h3>🌦 不同市场趋势胜率</h3>'
+      + '<span class="sub">沪深300 20日趋势分档</span></div><div class="card-body">'];
+    h.push('<table class="sm-tbl"><thead><tr><th class="l">趋势档</th><th>样本</th><th>胜率</th><th>平均收益</th></tr></thead><tbody>');
+    var arr = regime || [];
+    var any = false;
+    for (var i = 0; i < arr.length; i++) {
+      var r = arr[i] || {};
+      if (num(r.n) === 0) continue;
+      any = true;
+      h.push('<tr><td class="l">' + esc(r.label) + '</td><td>' + num(r.n) + '</td>'
+        + '<td class="' + cls(r.win == null ? null : r.win - 0.5) + '">' + pctPlain(r.win) + '</td>'
+        + '<td class="' + cls(r.avg) + '">' + pct(r.avg) + '</td></tr>');
+    }
+    if (!any) h.push('<tr><td colspan="4" class="sm-flat">暂无分档样本</td></tr>');
+    h.push('</tbody></table></div></div>');
+    return h.join('');
+  }
+
+  function learningKpis(L) {
+    var items = [
+      ['实战样本', num(L.n) + '<small>笔</small>'],
+      ['总体胜率', '<span class="' + cls(L.win_rate == null ? null : L.win_rate - 0.5) + '">' + pctPlain(L.win_rate) + '</span>'],
+      ['平均收益', '<span class="' + cls(L.avg_ret) + '">' + pct(L.avg_ret) + '</span>'],
+      ['止损先触发率', pctPlain(L.sl_rate)],
+      ['目标达成率', pctPlain(L.tg_rate)]
+    ];
+    var h = ['<div class="sm-kpis">'];
+    for (var i = 0; i < items.length; i++) {
+      h.push('<div class="sm-kpi"><div class="k">' + esc(items[i][0]) + '</div><div class="v">' + items[i][1] + '</div></div>');
+    }
+    h.push('</div>');
+    return h.join('');
+  }
+
+  function learningHtml(L) {
+    if (!L) {
+      return '<div class="sm-empty">暂无学习数据（请先运行 learning_mode.py 生成 learning_summary.json）</div>';
+    }
+    var h = [];
+    h.push('<div class="sm-verdict"><b>学习模式（只读观测 · 未改选股打分）</b><br>'
+      + '基于 <b>' + num(L.n) + '</b> 笔已结算实战（剔除 ' + num(L.excluded) + ' 笔字段异常），'
+      + '总体胜率 <b>' + pctPlain(L.win_rate) + '</b>，平均收益 <b>' + pct(L.avg_ret) + '</b>。'
+      + '下方把「选股时的因子」与「实战结果」对照，告诉你哪类因子挑出的票更可能赚钱、'
+      + '止损 / 目标设得合不合理、不同市况下该不该出手。<b>所有结论均为观测，未改动 daily_pick.py。</b>'
+      + '<br><span style="color:var(--ink-3)">生成日期：' + esc(L.generated || '—') + '</span></div>');
+    h.push(learningKpis(L));
+    h.push('<div class="card" style="margin-top:12px"><div class="card-head"><h3>📊 因子分档胜率</h3>'
+      + '<span class="sub">同档内样本胜率 · 量比 / 净流入最有区分度</span></div><div class="card-body">'
+      + bandsTable('量比', L.vol_bands)
+      + bandsTable('主力净流入', L.flow_bands)
+      + bandsTable('综合得分', L.score_bands)
+      + bandsTable('20日超额α', L.alpha_bands)
+      + '</div></div>');
+    h.push(corrTable(L.corr));
+    h.push(healthTable(L));
+    h.push(regimeTable(L.regime));
+    h.push('<div class="sm-tip"><b>读表须知</b><br>'
+      + '「综合得分」「α20」在入选后已<b>饱和</b>：样本里所有票得分都在 95–100、α20 都在 0–5（由入选门槛决定），'
+      + '因此这两项<b>无法区分胜负</b>。真正有区分度的是<b>量比、主力净流入、盈亏比(rr)</b>。'
+      + '想提升选股精度，应优化<b>分项因子</b>，而非调总分权重。</div>');
+    return h.join('');
+  }
+
+  function fetchLearn() {
+    if (LEARN) return Promise.resolve(LEARN);
+    return fetch('./api/reports/learning_summary.json?_=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) { LEARN = d; return LEARN; })
+      .catch(function () { LEARN = null; return null; });
+  }
+
+  function renderLearn(body) {
+    if (LEARN) { body.innerHTML = learningHtml(LEARN); return; }
+    body.innerHTML = '<div class="sm-empty">学习数据加载中…</div>';
+    fetchLearn().then(function () {
+      if (TAB === 'learn' && body) body.innerHTML = learningHtml(LEARN);
+    });
+  }
+
   /* ---------- KPI ---------- */
   function kpiHtml(cum) {
     var c = cum || {};
@@ -223,7 +373,7 @@
 
   /* ---------- 标签栏 ---------- */
   function tabBar() {
-    var tabs = [['month', '月度'], ['quarter', '季度'], ['year', '年度']];
+    var tabs = [['month', '月度'], ['quarter', '季度'], ['year', '年度'], ['learn', '学习']];
     var h = ['<div class="tab-bar" data-smtabs>'];
     for (var i = 0; i < tabs.length; i++) {
       var active = (tabs[i][0] === TAB) ? ' active' : '';
@@ -269,7 +419,10 @@
         if (!btn) return;
         TAB = btn.getAttribute('data-p') || 'month';
         var body = root.querySelector('[data-smperiod]');
-        if (body) body.innerHTML = periodTable(((DATA || {}).period || {})[TAB] || []);
+        if (body) {
+          if (TAB === 'learn') renderLearn(body);
+          else body.innerHTML = periodTable(((DATA || {}).period || {})[TAB] || []);
+        }
         var all = bar.querySelectorAll('.tab-item');
         for (var i = 0; i < all.length; i++) {
           all[i].classList.toggle('active', all[i] === btn);
