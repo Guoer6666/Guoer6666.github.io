@@ -31,9 +31,7 @@ V.pickscreen = (() => {
   }
   function boardBadge(code) {
     const b = boardInfo(code);
-    return '<span class="ps-board' + (b.tradable ? ' ps-board-ok' : ' ps-board-x') + '" title="'
-      + (b.tradable ? '可交易板块' : '⚠ 你当前账户无法交易该板块（已确认不可买）') + '">'
-      + (b.tradable ? '' : '⚠ ') + b.label + '</span>';
+    return '<span class="ps-board" title="所属板块：' + b.label + '">' + b.label + '</span>';
   }
   const f2 = v => (v == null || !isFinite(v)) ? '—' : (+v).toFixed(2);
   const pct1 = v => (v == null || !isFinite(v)) ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
@@ -798,7 +796,7 @@ V.pickscreen = (() => {
     if (res.dList && res.dList.length) {
       const rows = res.dList.map((r, i) => {
         const bi = boardInfo(r.code);
-        const btag = '（' + r.code + '·' + bi.label + (bi.tradable ? '' : '·不可买') + '）';
+        const btag = '（' + r.code + '·' + bi.label + '）';
         return ([
         { text: (i + 1) + '. ' + r.name + btag, dir: 'up' },
         { text: '  评分 ' + r.score + '  介入≤' + f2(r.buyLimit) + '  止损 ' + f2(r.stopLoss) + '  目标 ' + f2(r.target), dir: '' }
@@ -808,7 +806,7 @@ V.pickscreen = (() => {
       const logicRows = [];
       res.dList.forEach((r, i) => {
         const bi2 = boardInfo(r.code);
-        logicRows.push([{ text: (i + 1) + '. ' + r.name + '（' + r.code + '·' + bi2.label + (bi2.tradable ? '' : '·不可买') + '）', dir: 'up' }, { text: '  评分 ' + r.score + ' · α ' + pct1(r.alpha20) + ' · 量比 ' + (r.volRatio ? r.volRatio.toFixed(1) : '—'), dir: '' }]);
+        logicRows.push([{ text: (i + 1) + '. ' + r.name + '（' + r.code + '·' + bi2.label + '）', dir: 'up' }, { text: '  评分 ' + r.score + ' · α ' + pct1(r.alpha20) + ' · 量比 ' + (r.volRatio ? r.volRatio.toFixed(1) : '—'), dir: '' }]);
         logicRows.push([{ text: '    ' + (r.advice ? r.advice[0].replace('【核心逻辑】', '') : ''), dir: '' }]);
         logicRows.push([{ text: '    介入≤' + f2(r.buyLimit) + ' · 止损 ' + f2(r.stopLoss) + ' · 目标 ' + f2(r.target) + (r.mappedHit ? ' · 映射:' + r.mappedHit : ''), dir: '' }]);
       });
@@ -1009,7 +1007,7 @@ V.pickscreen = (() => {
         + '<th>#</th><th>标的</th><th>评分</th><th>现价</th><th>介入上限</th><th>止损价</th><th>目标价</th><th>α(20日)</th><th>量比</th><th>位置</th><th>行业</th><th>映射</th><th>中期体检</th>'
         + '</tr></thead><tbody>';
       res.dList.forEach((r, i) => {
-        h += '<tr class="m26-row-d' + (boardInfo(r.code).tradable ? '' : ' m26-row-untrade') + '">'
+        h += '<tr class="m26-row-d">'
           + '<td>' + (i + 1) + '</td>'
           + '<td><b>' + UI.esc(r.name) + '</b>' + boardBadge(r.code) + '<div class="m26-cell-sub">' + UI.esc(r.code) + '</div></td>'
           + '<td><b class="m26-c-up">' + r.score + '</b></td>'
