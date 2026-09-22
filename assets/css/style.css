@@ -1610,3 +1610,9 @@ a.flash:hover .fgo{opacity:1}
 .tbl tr:hover td{background:var(--panel-2)}
 .tbl .up{color:#1f9d55;font-weight:600}
 .tbl .down{color:#d8453a;font-weight:600}
+
+/* 板块标签（2026-09-22）：主板+创业板可交易；科创板/北交所不可买置灰 */
+.ps-board{display:inline-block;font-size:11px;line-height:1;padding:2px 6px;border-radius:4px;margin-left:5px;vertical-align:middle;font-weight:600;white-space:nowrap}
+.ps-board-ok{background:rgba(20,160,90,.14);color:#1a8a50;border:1px solid rgba(20,160,90,.35)}
+.ps-board-x{background:rgba(130,130,140,.16);color:#8a8f98;border:1px solid rgba(130,130,140,.30)}
+tr.m26-row-untrade{opacity:.6}

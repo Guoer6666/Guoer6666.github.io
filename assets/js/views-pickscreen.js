@@ -16,6 +16,25 @@ V.pickscreen = (() => {
 
   /* ---------------- 小工具（自包含，不依赖 M2560） ---------------- */
   const isST = name => /ST|退|PT|\*/i.test(name || '');
+
+  /* 板块识别：从代码前缀判定 主板/创业板/科创板/北交所 + 是否可交易
+     用户权限（2026-09-22 拍板）：主板 + 创业板可交易；科创板(688/689) + 北交所(8xx/4xx/920) 不可买 */
+  const TRADABLE = { main: true, cyb: true, star: false, bse: false };
+  function boardInfo(code) {
+    const c = String(code || '').replace(/[^0-9]/g, '');
+    let key, label;
+    if (/^(688|689)/.test(c)) { key = 'star'; label = '科创'; }
+    else if (/^(8|4)/.test(c) || /^920/.test(c)) { key = 'bse'; label = '北交'; }
+    else if (/^(300|301)/.test(c)) { key = 'cyb'; label = '创业'; }
+    else { key = 'main'; label = '主板'; }
+    return { key, label, tradable: TRADABLE[key] };
+  }
+  function boardBadge(code) {
+    const b = boardInfo(code);
+    return '<span class="ps-board' + (b.tradable ? ' ps-board-ok' : ' ps-board-x') + '" title="'
+      + (b.tradable ? '可交易板块' : '⚠ 你当前账户无法交易该板块（已确认不可买）') + '">'
+      + (b.tradable ? '' : '⚠ ') + b.label + '</span>';
+  }
   const f2 = v => (v == null || !isFinite(v)) ? '—' : (+v).toFixed(2);
   const pct1 = v => (v == null || !isFinite(v)) ? '—' : (v >= 0 ? '+' : '') + (v * 100).toFixed(1) + '%';
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -735,7 +754,7 @@ V.pickscreen = (() => {
         + '<span class="lg-tag lg-tag-plan">待执行</span></div>';
       todayList.forEach(r => {
         h += '<div class="lg-plan">'
-          + '<b>' + UI.esc(r.name) + '</b><span class="lg-code">' + UI.esc(r.code) + '</span>'
+          + '<b>' + UI.esc(r.name) + '</b><span class="lg-code">' + UI.esc(r.code) + '</span>' + boardBadge(r.code)
           + '<span class="lg-plan-g">'
           + '介入≤<b class="m26-c-warn">' + f2(r.buyLimit) + '</b>'
           + '　止损<b class="m26-c-down">' + f2(r.stopLoss) + '</b>'
@@ -777,14 +796,19 @@ V.pickscreen = (() => {
       ] }] }
     );
     if (res.dList && res.dList.length) {
-      const rows = res.dList.map((r, i) => ([
-        { text: (i + 1) + '. ' + r.name + '（' + r.code + '）', dir: 'up' },
+      const rows = res.dList.map((r, i) => {
+        const bi = boardInfo(r.code);
+        const btag = '（' + r.code + '·' + bi.label + (bi.tradable ? '' : '·不可买') + '）';
+        return ([
+        { text: (i + 1) + '. ' + r.name + btag, dir: 'up' },
         { text: '  评分 ' + r.score + '  介入≤' + f2(r.buyLimit) + '  止损 ' + f2(r.stopLoss) + '  目标 ' + f2(r.target), dir: '' }
-      ]));
+      ]);
+      });
       // 追加每只的核心逻辑一行
       const logicRows = [];
       res.dList.forEach((r, i) => {
-        logicRows.push([{ text: (i + 1) + '. ' + r.name + '（' + r.code + '）', dir: 'up' }, { text: '  评分 ' + r.score + ' · α ' + pct1(r.alpha20) + ' · 量比 ' + (r.volRatio ? r.volRatio.toFixed(1) : '—'), dir: '' }]);
+        const bi2 = boardInfo(r.code);
+        logicRows.push([{ text: (i + 1) + '. ' + r.name + '（' + r.code + '·' + bi2.label + (bi2.tradable ? '' : '·不可买') + '）', dir: 'up' }, { text: '  评分 ' + r.score + ' · α ' + pct1(r.alpha20) + ' · 量比 ' + (r.volRatio ? r.volRatio.toFixed(1) : '—'), dir: '' }]);
         logicRows.push([{ text: '    ' + (r.advice ? r.advice[0].replace('【核心逻辑】', '') : ''), dir: '' }]);
         logicRows.push([{ text: '    介入≤' + f2(r.buyLimit) + ' · 止损 ' + f2(r.stopLoss) + ' · 目标 ' + f2(r.target) + (r.mappedHit ? ' · 映射:' + r.mappedHit : ''), dir: '' }]);
       });
@@ -985,9 +1009,9 @@ V.pickscreen = (() => {
         + '<th>#</th><th>标的</th><th>评分</th><th>现价</th><th>介入上限</th><th>止损价</th><th>目标价</th><th>α(20日)</th><th>量比</th><th>位置</th><th>行业</th><th>映射</th><th>中期体检</th>'
         + '</tr></thead><tbody>';
       res.dList.forEach((r, i) => {
-        h += '<tr class="m26-row-d">'
+        h += '<tr class="m26-row-d' + (boardInfo(r.code).tradable ? '' : ' m26-row-untrade') + '">'
           + '<td>' + (i + 1) + '</td>'
-          + '<td><b>' + UI.esc(r.name) + '</b><div class="m26-cell-sub">' + UI.esc(r.code) + '</div></td>'
+          + '<td><b>' + UI.esc(r.name) + '</b>' + boardBadge(r.code) + '<div class="m26-cell-sub">' + UI.esc(r.code) + '</div></td>'
           + '<td><b class="m26-c-up">' + r.score + '</b></td>'
           + '<td>' + f2(r.close) + '</td>'
           + '<td class="m26-c-warn">' + f2(r.buyLimit) + '<div class="m26-cell-sub">高开破此放弃</div></td>'
@@ -1012,7 +1036,7 @@ V.pickscreen = (() => {
     // C/B/A 通用表
     const obs = (list, tag) => list.length ? ('<div class="m26-sec-t">' + tag + '（' + list.length + ' 只）</div>'
       + '<div class="m26-tbl-wrap"><table class="m26-tbl"><thead><tr><th>#</th><th>标的</th><th>评分</th><th>现价</th><th>α(20日)</th><th>量比</th><th>位置</th><th>行业</th></tr></thead><tbody>'
-      + list.map((r, i) => '<tr><td>' + (i + 1) + '</td><td><b>' + UI.esc(r.name) + '</b><div class="m26-cell-sub">' + UI.esc(r.code) + '</div></td>'
+      + list.map((r, i) => '<tr><td>' + (i + 1) + '</td><td><b>' + UI.esc(r.name) + '</b>' + boardBadge(r.code) + '<div class="m26-cell-sub">' + UI.esc(r.code) + '</div></td>'
         + '<td><b>' + r.score + '</b></td><td>' + f2(r.close) + '</td>'
         + '<td class="' + (r.alpha20 > 0 ? 'm26-c-up' : 'm26-c-down') + '">' + pct1(r.alpha20) + '</td>'
         + '<td>' + (r.volRatio ? r.volRatio.toFixed(1) : '—') + '</td>'
