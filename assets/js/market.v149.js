@@ -420,50 +420,104 @@ const Market = (() => {
      字段：f12 代码 / f14 名称 / f3 涨跌幅 / f62 主力净流入(美元) / f128 领涨股
      多源降级：直连 push2 → push2delay 镜像 → allorigins 代理
      ============================================================ */
+  // 美股行业 / 概念板块榜
+  // 数据源：腾讯财经 qt.gtimg.cn 美股行业ETF实时行情（JSONP 风格全局变量赋值，<script> 跨域加载）
+  // 背景：东方财富原「美股板块榜」接口 (clist m:100+t:300/t:301) 自 2026-09 起服务端返回 rc=102 下线，
+  //       三源降级（直连/push2delay/allorigins）均失败。改用美股行业/概念 ETF 涨跌幅代表板块强弱，
+  //       实时、稳定、不限流，且 <script> 跨域不受 CORS 限制。
+  const US_SECTORS = [
+    // 行业（标普精选行业 SPDR + 主流宽基）
+    { code: 'XLK', name: '科技', grp: 'ind' },
+    { code: 'XLF', name: '金融', grp: 'ind' },
+    { code: 'XLV', name: '医疗', grp: 'ind' },
+    { code: 'XLE', name: '能源', grp: 'ind' },
+    { code: 'XLI', name: '工业', grp: 'ind' },
+    { code: 'XLB', name: '原材料', grp: 'ind' },
+    { code: 'XLU', name: '公用事业', grp: 'ind' },
+    { code: 'XLY', name: '可选消费', grp: 'ind' },
+    { code: 'XLP', name: '必需消费', grp: 'ind' },
+    { code: 'XLC', name: '通信服务', grp: 'ind' },
+    { code: 'XLRE', name: '房地产', grp: 'ind' },
+    // 概念 / 主题
+    { code: 'SOXX', name: '半导体', grp: 'con' },
+    { code: 'SMH', name: '半导体设备', grp: 'con' },
+    { code: 'XBI', name: '生物科技', grp: 'con' },
+    { code: 'IBB', name: '创新药', grp: 'con' },
+    { code: 'KBE', name: '银行', grp: 'con' },
+    { code: 'KRE', name: '地区银行', grp: 'con' },
+    { code: 'XHB', name: '房产建筑', grp: 'con' },
+    { code: 'ITB', name: '住宅建筑', grp: 'con' },
+    { code: 'XRT', name: '零售', grp: 'con' },
+    { code: 'JETS', name: '航空', grp: 'con' },
+    { code: 'IYT', name: '交通运输', grp: 'con' },
+    { code: 'XME', name: '金属矿业', grp: 'con' },
+    { code: 'GDX', name: '黄金矿', grp: 'con' },
+    { code: 'KIE', name: '保险', grp: 'con' },
+    { code: 'XPH', name: '制药', grp: 'con' },
+    { code: 'FDN', name: '互联网', grp: 'con' },
+    { code: 'IGV', name: '软件云', grp: 'con' },
+    { code: 'ARKK', name: '创新', grp: 'con' },
+    { code: 'XOP', name: '油气开采', grp: 'con' },
+    { code: 'USO', name: '原油', grp: 'con' }
+  ];
+
+  // 用 <script> 标签跨域加载腾讯行情（JSONP 风格：接口把数据赋值给全局变量 v_usXXX）。
+  // 跨域 <script> 不受 CORS 限制；腾讯公开行情接口不校验 Referer，可在任意前端页直连。
+  // 注意：腾讯 qt.gtimg.cn 批量查询（usXLK,usSOXX,…）实测只返回第一个代码，
+  //      故改为「每只 ETF 单独一次 <script> 请求」并行拉取，再汇总。
+  function _tencentUSOne(code) {
+    return new Promise((resolve) => {
+      const s = document.createElement('script');
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        if (s.parentNode) s.parentNode.removeChild(s);
+        const raw = window['v_us' + code];
+        if (typeof raw !== 'string') { resolve(null); return; }
+        const f = raw.split('~');
+        let chg = parseFloat(f[31]); // [31] = 涨跌幅(%)
+        if (isNaN(chg)) chg = null;
+        resolve({ chgPct: chg });
+      };
+      s.onload = finish;
+      s.onerror = finish;
+      s.src = 'https://qt.gtimg.cn/q=us' + code;
+      document.body.appendChild(s);
+      setTimeout(finish, 10000); // 兜底超时
+    });
+  }
+
+  function tencentUSQuotes(codes) {
+    return Promise.all(codes.map(_tencentUSOne)).then((results) => {
+      const out = {};
+      codes.forEach((c, i) => { out[c] = results[i]; });
+      return out;
+    });
+  }
+
   async function usSectorRank() {
-    const EM_UT = '7eea3edcaed734bea9cbfc24409ed989';
-    const grab = async (fs, po) => {
-      // 行业(t:300)/概念(t:301)各取前12条，更接近同花顺App列表长度
-      const core = 'https://push2.eastmoney.com/api/qt/clist/get?np=1&fltt=2&invt=2&fid=f3&fs='
-        + encodeURIComponent(fs)
-        + '&fields=f12,f14,f3,f62,f128,f136,f140&pz=12&pn=1&po=' + po + '&ut=' + EM_UT + '&_=' + Date.now();
-      const urls = [
-        core,
-        core.replace('push2.eastmoney.com', 'push2delay.eastmoney.com'),
-        'https://api.allorigins.win/raw?url=' + encodeURIComponent(core)
-      ];
-      for (const u of urls) {
-        try {
-          const res = await timeout(fetch(u, { cache: 'no-store' }), 9000);
-          if (!res.ok) continue;
-          const j = await res.json();
-          const list = j && j.data && j.data.diff;
-          if (!Array.isArray(list) || !list.length) continue;
-          return list.map(d => ({
-            code: d.f12, name: d.f14,
-            chgPct: d.f3 != null ? +(+d.f3).toFixed(2) : null,
-            netInflow: d.f62 != null ? +(d.f62 / 1e8).toFixed(2) : null, // 亿美元
-            leader: d.f128 || d.f140 || d.f136 || ''      // 多字段兜底领涨股名称
-          }));
-        } catch (e) { /* 尝试下一个源 */ }
-      }
-      return null;
-    };
     try {
-      const [indUp, conUp] = await Promise.all([
-        grab('m:100+t:300', 1),
-        grab('m:100+t:301', 1)
-      ]);
+      const data = await tencentUSQuotes(US_SECTORS.map(s => s.code));
+      const industry = [], concept = [];
+      for (const s of US_SECTORS) {
+        const d = data[s.code];
+        if (!d || d.chgPct == null) continue;
+        const item = { name: s.name, chgPct: d.chgPct, leader: s.code }; // leader 显示 ETF 标的代码
+        (s.grp === 'ind' ? industry : concept).push(item);
+      }
+      industry.sort((a, b) => b.chgPct - a.chgPct);
+      concept.sort((a, b) => b.chgPct - a.chgPct);
+      const ok = industry.length > 0 || concept.length > 0;
       return {
-        ok: !!(indUp && conUp),
-        industry: indUp || [],
-        concept: conUp || [],
+        ok,
+        industry, concept,
         date: tradingDay(),
         usDate: usTradingDay(),
-        source: '东方财富美股板块'
+        source: '腾讯财经·美股行业ETF(实时)'
       };
     } catch (e) {
-      console.warn('[美股板块获取失败]', e.message);
+      console.warn('[美股板块获取失败]', e && e.message);
       return { ok: false, industry: [], concept: [] };
     }
   }
