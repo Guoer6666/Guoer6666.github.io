@@ -9,6 +9,19 @@
 (function () {
   'use strict';
 
+  /* 板块标签（按代码前缀，中性提示，不改打分逻辑） */
+  function boardInfo(code) {
+    var c = (code || '').toString();
+    if (/^(688|689)/.test(c)) return { label: '科创' };
+    if (/^(8|4|920)/.test(c)) return { label: '北交' };
+    if (/^(300|301)/.test(c)) return { label: '创业' };
+    return { label: '主板' };
+  }
+  function boardBadge(code) {
+    var b = boardInfo(code);
+    return '<span class="ps-board" title="所属板块：' + b.label + '">' + b.label + '</span>';
+  }
+
   var DATA = null;
   var LEARN = null;    /* 学习模式数据（learning_summary.json） */
   var TAB = 'month';   /* month | quarter | year | learn */
@@ -164,7 +177,7 @@
         var r = rows[i] || {};
         var judge = esc(r.hit_buy || r.exit_reason || r.note || '');
         h.push('<tr>'
-          + '<td class="l"><b>' + esc(r.name) + '</b> <span style="color:var(--ink-3)">' + esc(r.code) + '</span></td>'
+          + '<td class="l"><b>' + esc(r.name) + '</b> <span style="color:var(--ink-3)">' + esc(r.code) + '</span>' + boardBadge(r.code) + '</td>'
           + '<td>' + (r.score == null ? '—' : Number(r.score).toFixed(0)) + '</td>'
           + '<td>' + (r.buyLimit == null ? '—' : Number(r.buyLimit).toFixed(2)) + '</td>'
           + '<td>' + (r.stopLoss == null ? '—' : Number(r.stopLoss).toFixed(2)) + '</td>'

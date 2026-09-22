@@ -9,6 +9,19 @@ V.verify = (() => {
 
   const TS = () => '?ts=' + Date.now();
 
+  /* 板块标签（按代码前缀，中性提示，不改打分逻辑） */
+  function boardInfo(code) {
+    const c = (code || '').toString();
+    if (/^(688|689)/.test(c)) return { label: '科创' };
+    if (/^(8|4|920)/.test(c)) return { label: '北交' };
+    if (/^(300|301)/.test(c)) return { label: '创业' };
+    return { label: '主板' };
+  }
+  function boardBadge(code) {
+    const b = boardInfo(code);
+    return '<span class="ps-board" title="所属板块：' + b.label + '">' + b.label + '</span>';
+  }
+
   /* 相对日期词 */
   const relDay = s => {
     if (!s || s.length < 10) return s || '';
@@ -93,7 +106,7 @@ V.verify = (() => {
     return '<div class="lg-card">'
       /* ---- 标题行：名称/代码 + 收盘价 + 涨幅 + 收益 ---- */
       + '<div class="lg-hd"><span class="lg-no">' + (i + 1) + '</span>'
-      + '<b>' + (r.name || '—') + '</b><span class="lg-code">' + (r.code || '') + '</span>'
+      + '<b>' + (r.name || '—') + '</b><span class="lg-code">' + (r.code || '') + '</span>' + boardBadge(r.code)
       + '<span class="lg-day-chg ' + dc.cls + '">' + dc.v + '</span>'
       + '<span class="lg-ret ' + dirCls(r.ret) + '">' + retTxt + '</span></div>'
 
