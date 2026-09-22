@@ -19,7 +19,7 @@ V.pickscreen = (() => {
 
   /* 板块识别：从代码前缀判定 主板/创业板/科创板/北交所 + 是否可交易
      用户权限（2026-09-22 拍板）：主板 + 创业板可交易；科创板(688/689) + 北交所(8xx/4xx/920) 不可买 */
-  const TRADABLE = { main: true, cyb: true, star: false, bse: false };
+  const TRADABLE = { main: true, cyb: false, star: false, bse: false };
   function boardInfo(code) {
     const c = String(code || '').replace(/[^0-9]/g, '');
     let key, label;
