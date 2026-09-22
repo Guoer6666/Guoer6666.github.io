@@ -1590,7 +1590,7 @@ a.flash:hover .fgo{opacity:1}
 .m26-ck-err{font-size:11.5px;color:var(--amber);cursor:help}
 .m26-arrow{text-align:center;color:var(--ink-3);font-size:11px;line-height:1.4;margin:2px 0}
 
-/* 选股次日验证（v-verify） */
+/* 实盘每日记录（v-verify） */
 .verify-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}
 .verify-kpis .kpi{padding:12px 14px;border-radius:var(--radius-sm);background:var(--panel-2);box-shadow:inset 0 0 0 1px var(--line);text-align:center}
 .verify-kpis .kpi-v{font-size:21px;font-weight:800;line-height:1.1}

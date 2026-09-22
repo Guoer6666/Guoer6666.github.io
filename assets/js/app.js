@@ -12,28 +12,8 @@ const MENU = [
       { k: 'm2560', label: '2560观察池', badge: '' },
       { k: 'holdings', label: '个股逻辑拆解', badge: '新' },
       { k: 'pickscreen', label: '个股拆解选股', badge: '新' },
-      { k: 'verify', label: '选股次日验证', badge: '新' },
+      { k: 'verify', label: '实盘每日记录' },
       { k: 'summary', label: '周期总结', badge: '新' }
-    ]
-  },
-  {
-    key: 'checkin', icon: '📝', title: '日常打卡合集', items: [
-      { k: 'notes', label: '复盘学习笔记' },
-      { k: 'routine', label: '作息运动记录' },
-      { k: 'mindset', label: '交易心态周记' }
-    ]
-  },
-  {
-    key: 'challenge', icon: '🎯', title: '周期挑战计划', items: [
-      { k: 'goal', label: '月度交易收益目标' },
-      { k: 'discipline', label: '短线操作纪律清单' }
-    ]
-  },
-  {
-    key: 'hobby', icon: '🎨', title: '兴趣边角板块', items: [
-      { k: 'material', label: '交易素材归档区' },
-      { k: 'tools', label: 'AI复盘工具技巧库' },
-      { k: 'journal', label: '实盘每日记录' }
     ]
   }
 ];

@@ -1,5 +1,5 @@
 /* ============================================================
-   views-verify.js · 选股次日验证 · 长期命中率跟踪 + 交易台账
+   views-verify.js · 实盘每日记录 · 长期命中率跟踪 + 交易台账
    ------------------------------------------------------------
    读 /api/reports/verify_ledger.json（build_ledger.py 拼装的结构化台账）
    展示：累计战绩 → 买卖规则 → 昨天买入(持仓中) → 今天待执行 → 历史已了结
@@ -127,7 +127,7 @@ V.verify = (() => {
     return `
       <div class="page-head">
         <div>
-          <h1 class="page-title">选股次日验证</h1>
+          <h1 class="page-title">实盘每日记录</h1>
           <p class="page-sub">验证盘后选股名单次日实际命中 · 长期准确率跟踪 · 交易台账</p>
         </div>
       </div>
@@ -253,5 +253,5 @@ V.verify = (() => {
     root.innerHTML = html || '<div class="m26-card"><div class="m26-empty">暂无数据</div></div>';
   }
 
-  return { title: '选股次日验证', desc: '盘后选股名单次日实际命中率 · 交易台账', render, mount };
+  return { title: '实盘每日记录', desc: '每日实盘执行记录 · T+1 验证与交易台账', render, mount };
 })();
