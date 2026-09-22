@@ -3,17 +3,25 @@
    ============================================================ */
 const MENU = [
   {
-    key: 'review', icon: '📊', title: 'A股每日复盘', items: [
+    key: 'market', icon: '📡', title: '盘面纵览', items: [
       { k: 'overnight', label: '全球隔夜要闻' },
       { k: 'usnight', label: '夜盘美股', live: 'us' },
       { k: 'asia', label: '日韩股市', live: 'asia' },
-      { k: 'outlook', label: '次日盘前总结' },
       { k: 'sentiment', label: '大盘总览', live: 'a' },
-      { k: 'm2560', label: '2560观察池', badge: '' },
-      { k: 'holdings', label: '个股逻辑拆解', badge: '新' },
-      { k: 'pickscreen', label: '个股拆解选股', badge: '新' },
+      { k: 'outlook', label: '次日盘前总结' }
+    ]
+  },
+  {
+    key: 'pick', icon: '🎯', title: '选股系统', items: [
+      { k: 'm2560', label: '2560观察池' },
+      { k: 'holdings', label: '个股逻辑拆解' },
+      { k: 'pickscreen', label: '个股拆解选股' }
+    ]
+  },
+  {
+    key: 'review', icon: '📊', title: '复盘台账', items: [
       { k: 'verify', label: '实盘每日记录' },
-      { k: 'summary', label: '周期总结', badge: '新' }
+      { k: 'summary', label: '周期总结' }
     ]
   }
 ];
