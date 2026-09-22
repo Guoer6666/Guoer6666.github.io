@@ -527,7 +527,7 @@ V.usnight = {
 
       ${UI.card({
         title: '🏆 美股领涨板块（行业 + 概念）',
-        sub: '腾讯财经美股行业/概念ETF实时榜 · 对次日A股资金走向有领先映射',
+        sub: '美股行业 + 概念真实涨跌榜 · 数据源恢复前暂停更新',
         right: `<span class="stamp" id="usSecStamp">采集中…</span>
                 <button class="btn btn-sm btn-ghost" data-act="reload-us">刷新</button>`,
         tight: true,
@@ -562,7 +562,7 @@ V.usnight = {
       const sec = V.usnight._usSec;
       if (!el) return;
       if (!sec || !sec.ok) {
-        el.innerHTML = '<div class="flash-empty">美股板块数据暂不可达，点「刷新」重试。数据源：腾讯财经美股行业ETF实时行情（盘前/盘中/盘后实时；周末显示最近交易日）。</div>';
+        el.innerHTML = '<div class="flash-empty">美股板块榜暂无可靠数据源：原东方财富板块接口已下线。宁缺勿假，不再用 ETF 涨跌幅代理（与真实板块榜口径有偏差）；待找到真实板块数据源后本卡自动恢复。</div>';
         if (note) note.textContent = '';
         return;
       }
@@ -582,7 +582,7 @@ V.usnight = {
         return `<div class="us-sec-group">
           <div class="us-sec-gtitle">${label}</div>
           <table class="us-sec-table">
-            <thead><tr><th>排名</th><th>板块名称</th><th>涨幅</th><th>标的</th></tr></thead>
+            <thead><tr><th>排名</th><th>板块名称</th><th>涨幅</th><th>领涨股</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>`;
