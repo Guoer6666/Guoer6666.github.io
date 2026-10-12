@@ -1,0 +1,10 @@
+# 部署到 GitHub Pages 时的忽略项
+*.log
+.DS_Store
+Thumbs.db
+__pycache__/
+.workbuddy/
+
+# 只允许密文进仓库（防止明文报告误提交泄露）
+api/reports/*
+!api/reports/*.enc

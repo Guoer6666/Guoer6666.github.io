@@ -1,0 +1,25 @@
+{
+  "name": "过儿的工作台",
+  "short_name": "过儿工作台",
+  "description": "A股每日复盘 · 日常打卡 · 周期挑战 · 兴趣边角，一站式个人交易工作台",
+  "lang": "zh-CN",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#fff5f8",
+  "theme_color": "#ff7fa6",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "夜盘美股", "short_name": "夜盘", "url": "./index.html#usnight" },
+    { "name": "个人持仓记录", "short_name": "持仓", "url": "./index.html#holdings" },
+    { "name": "次日机会方向", "short_name": "机会", "url": "./index.html#opportunity" }
+  ]
+}
