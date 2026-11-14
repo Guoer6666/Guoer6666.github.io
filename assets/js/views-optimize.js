@@ -184,9 +184,21 @@
     return h;
   }
 
+  function renderBanner() {
+    return '<div class="opt-banner">' +
+      '<div class="opt-banner-h">📌 这张看板怎么用（30 秒看懂）</div>' +
+      '<ul>' +
+      '<li><b>在哪看：</b>工作台 → 选股系统 → <b>优化看板</b>（独立页，不在选股图片上）。</li>' +
+      '<li><b>何时看：</b>随时可看，<b>不用等到卖出日</b>。下面的分析卡 / 亏损源 / 环境分层都<b>不用输入</b>，打开就有。</li>' +
+      '<li><b>何时才要输入：</b>只有下方「9:25 开盘决策器」需要——在<b>信号日次日上午 9:25</b>看开盘价时填一下，立刻告诉你这只买不买（填的是买前，不是卖那天）。</li>' +
+      '<li><b>最省事的操作：</b>每天 9:25 打开本页 → 看「今日信号」是否已自动列出 → 在每只票填个开盘价 → 红/黄/绿一眼看出买不买。</li>' +
+      '</ul></div>';
+  }
+
   function renderDecision() {
     var h = '<div class="opt-decision" id="optDec">';
-    h += '<div class="opt-sec-h">🎯 9:25 开盘决策器（交互）</div>';
+    h += '<div class="opt-sec-h">🎯 9:25 开盘决策器（每天买前用，30 秒）</div>';
+    h += '<div class="opt-steps">操作：① 看「今日信号」是否已自动列出（没列出就手填 c0）；② 在每只票填<b>次日开盘价</b>；③ 看颜色 → 🟢可买 / 🟡不买 / 🔴放弃。</div>';
     h += '<div class="opt-inputs">' +
       '<label>信号日收盘 c0<input id="optC0" type="number" step="0.01" placeholder="如 85.75"></label>' +
       '<label>次日开盘 o<input id="optO" type="number" step="0.01" placeholder="如 85.20"></label>' +
@@ -194,7 +206,7 @@
       '<button class="btn btn-solid" id="optJudge">判定</button>' +
       '</div>';
     h += '<div class="opt-verdict warn" id="optVerdict">输入 c0 与 o，点「判定」看是否开仓。</div>';
-    h += '<div class="opt-note">也可在下方「今日信号」直接填开盘价，逐只实时判定。</div>';
+    h += '<div class="opt-note">判定规则（零容差）：开 > c0 → 放弃（高开）；c0×0.99 ≤ 开 < c0 → 不买（小幅低开，历史最大亏损源）；开 = c0 → 可买（平开）；开 < c0×0.99 → 可买（低开≥1%）；开 ≤ 止损价 → 不开仓。</div>';
     h += '<div id="optPicks" style="margin-top:10px"></div>';
     h += '</div>';
     return h;
@@ -232,10 +244,17 @@
         '.opt-pickrow b{min-width:80px;display:inline-block}' +
         '.opt-pickrow input{width:84px;padding:5px;border:1px solid var(--pink-line,#ffd6e3);border-radius:6px}' +
         '.opt-foot{font-size:11px;color:#999;margin-top:6px;text-align:center}' +
+        '.opt-banner{background:linear-gradient(135deg,#fff3f8,#fdeaf3);border:1px solid var(--pink,#ff7fa6);border-radius:14px;padding:12px 14px;margin-bottom:14px}' +
+        '.opt-banner-h{font-size:14px;font-weight:700;color:var(--pink-deep,#f2588a);margin-bottom:6px}' +
+        '.opt-banner ul{margin:0;padding-left:18px}' +
+        '.opt-banner li{font-size:12.5px;line-height:1.7;color:#444}' +
+        '.opt-banner b{color:var(--pink-deep,#f2588a)}' +
+        '.opt-steps{font-size:12.5px;background:var(--pink-soft,#fff0f5);border:1px solid var(--pink-line,#ffd6e3);border-radius:8px;padding:8px 10px;margin-bottom:10px;line-height:1.6;color:#555}' +
         '</style>';
       var body = style +
-        renderKpis() +
+        renderBanner() +
         renderDecision() +
+        renderKpis() +
         renderLoss() +
         renderHolding() +
         renderEnv() +
@@ -275,8 +294,8 @@
           if (data && Array.isArray(data[k])) data[k].forEach(function (it) { lists.push(it); });
         });
         if (!lists.length) {
-          box.innerHTML = '<div class="opt-note">今日信号：' +
-            (data && data.decision ? esc(data.decision) : '暂无（空仓或数据未就绪）') + '</div>';
+          box.innerHTML = '<div class="opt-note">今日信号未自动加载（工作台未部署 pick_latest 或今日空仓）。' +
+            '可直接在上方手填 c0 / 开盘价判定，效果一样。</div>';
           return;
         }
         var html = '<div class="opt-sec-h" style="font-size:13px;margin-top:10px">📡 今日信号（填开盘价实时判定）</div>';
@@ -308,9 +327,9 @@
         fetch('./api/reports/pick_latest.json?ts=' + Date.now(), { cache: 'no-store' })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (j) { renderPicks(j); })
-          .catch(function () { if (box) box.innerHTML = '<div class="opt-note">今日信号加载失败（未解锁或网络异常）。</div>'; });
+          .catch(function () { if (box) box.innerHTML = '<div class="opt-note">今日信号未自动加载（工作台未部署 pick_latest）。可直接手填 c0 / 开盘价判定。</div>'; });
       } catch (e) {
-        if (box) box.innerHTML = '<div class="opt-note">今日信号加载失败。</div>';
+        if (box) box.innerHTML = '<div class="opt-note">今日信号未自动加载。可直接手填 c0 / 开盘价判定。</div>';
       }
     }
   };
