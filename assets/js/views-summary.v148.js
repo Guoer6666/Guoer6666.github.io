@@ -85,17 +85,83 @@
       '.sm-empty{padding:28px 12px;text-align:center;color:var(--ink-3);font-size:13px}',
       '.sm-tip{font-size:11.5px;color:var(--ink-3);padding:8px 12px;background:var(--panel-2);border:1px dashed var(--line);border-radius:var(--radius-sm);margin-top:12px;line-height:1.7}',
       '.sm-verdict{border-left:4px solid #7c4dff;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:12.5px;line-height:1.7;background:var(--panel)}',
-      '.sm-verdict b{color:var(--ink)}'
+      '.sm-verdict b{color:var(--ink)}',
+      '.sm-brief{border:1px solid var(--line);border-left:4px solid #2f6bd8;border-radius:var(--radius-sm);background:var(--panel);padding:10px 12px;margin-bottom:10px;font-size:12.5px;line-height:1.75}',
+      '.sm-brief-h{font-weight:750;color:var(--ink);margin-bottom:4px;font-size:13px}',
+      '.sm-brief-b{color:var(--ink-2)}',
+      '.sm-brief-li{margin-top:2px}',
+      '.sm-brief-sugg{margin-top:6px;padding:7px 10px;background:var(--panel-2);border-radius:8px;font-size:12px;color:var(--ink)}',
+      '.sm-sync{border:1px solid var(--line);border-left:4px solid #e5484d;border-radius:var(--radius-sm);background:var(--panel);padding:10px 12px;margin:12px 0;font-size:12.5px;line-height:1.8;color:var(--ink-2)}',
+      '.sm-sync b{color:var(--ink)}'
     ].join('\n');
     document.head.appendChild(st);
   }
 
   /* ---------- 汇总表格 ---------- */
+  /* ---------- 周期总结报告 + 下一步建议（按台账自动生成，随 build_summary 每日更新） ---------- */
+  function gradeOf(r) {
+    var v = r.total_ret;
+    if (v == null) return { t: '—', c: '' };
+    if (v > 0.01) return { t: '盈利', c: 'good' };
+    if (v >= -0.01) return { t: '打平', c: '' };
+    return (r.sl_rate != null && r.sl_rate >= 0.6) ? { t: '弱市受损', c: 'bad' } : { t: '亏损', c: 'bad' };
+  }
+
+  function briefHtml(r, prev) {
+    var g = gradeOf(r);
+    var bal = 0.431; /* 盈亏平衡胜率（75 笔、费 0.102%/笔 实测） */
+    var lines = [];
+    /* 一句话结论 */
+    var head = '<b>' + esc(r.label) + '：</b>买入 ' + num(r.buy_n) + ' 笔，胜率 '
+      + pctPlain(r.win_rate) + '，每笔均 <b class="' + cls(r.avg_ret) + '">' + pct(r.avg_ret) + '</b>'
+      + '，累计 <b class="' + cls(r.total_ret) + '">' + pct(r.total_ret) + '</b>'
+      + '（评级：<b class="' + (g.c === 'good' ? 'up' : g.c === 'bad' ? 'down' : '') + '">' + g.t + '</b>）。';
+    /* 环比 */
+    if (prev && prev.total_ret != null && r.total_ret != null) {
+      var d = (r.total_ret - prev.total_ret) * 100;
+      lines.push((d >= 0 ? '📈 较上期（' + esc(prev.label) + '）改善 +' : '📉 较上期（' + esc(prev.label) + '）恶化 ')
+        + d.toFixed(2) + ' 个百分点。');
+    }
+    /* 问题诊断 + 建议（规则化，引用优化看板已验证结论） */
+    var sugg = [];
+    if (r.sl_rate != null && r.sl_rate >= 0.6) {
+      lines.push('🔻 止损先触发率 ' + pctPlain(r.sl_rate) + '，止损密集——本期大概率处于大盘偏冷阶段。');
+      sugg.push('大盘偏冷日（闸门分 < 0）降仓或空仓——优化看板已验证：仅跳过弱市月即可把累计由 -21% 翻至 +22%。');
+    }
+    if (r.win_rate != null && r.win_rate < bal) {
+      lines.push('🔻 胜率低于盈亏平衡线 43.1%（扣费后），该节奏长期为负。');
+      sugg.push('先执行「优化看板」9:25 决策纪律（高开放弃 / 小幅低开不买），宁可少做，不做无效单。');
+    }
+    if (r.avg_ret != null && r.avg_ret < 0 && r.total_ret != null && r.total_ret >= 0) {
+      sugg.push('累计为正靠个别大赚支撑、每笔均亏——控制单票仓位，别重仓摊平。');
+    }
+    if (g.c === 'good') {
+      sugg.push('保持当前纪律；继续按「优化看板」双口径记账积累样本外证据。');
+    }
+    /* 通用落地方案提示 */
+    sugg.push('落地参照「优化看板」三件事：① 剔除小幅低开(-1%~0%)入场；② 弱市回避；③ T+2 开盘无条件卖（历史回测 +26.2%，待样本外验证）。');
+    var h = ['<div class="sm-brief">'];
+    h.push('<div class="sm-brief-h">📋 ' + esc(r.label) + ' 总结报告</div>');
+    h.push('<div class="sm-brief-b">' + head);
+    for (var i = 0; i < lines.length; i++) h.push('<div class="sm-brief-li">' + lines[i] + '</div>');
+    if (sugg.length) {
+      h.push('<div class="sm-brief-sugg"><b>下一步建议</b>');
+      for (var j = 0; j < sugg.length; j++) h.push('<div class="sm-brief-li">• ' + sugg[j] + '</div>');
+      h.push('</div>');
+    }
+    h.push('</div></div>');
+    return h.join('');
+  }
+
   function periodTable(list) {
     if (!list || !list.length) {
       return '<div class="sm-empty">暂无数据</div>';
     }
     var h = [];
+    /* 每期先出总结报告卡（最新期在最上），再出汇总表 */
+    for (var b = 0; b < list.length; b++) {
+      h.push(briefHtml(list[b] || {}, (b + 1) < list.length ? list[b + 1] : null));
+    }
     h.push('<div style="overflow-x:auto"><table class="sm-tbl">');
     h.push('<thead><tr>'
       + '<th class="l">周期</th>'
@@ -329,7 +395,14 @@
       + '总体胜率 <b>' + pctPlain(L.win_rate) + '</b>，平均收益 <b>' + pct(L.avg_ret) + '</b>。'
       + '下方把「选股时的因子」与「实战结果」对照，告诉你哪类因子挑出的票更可能赚钱、'
       + '止损 / 目标设得合不合理、不同市况下该不该出手。<b>所有结论均为观测，未改动 daily_pick.py。</b>'
-      + '<br><span style="color:var(--ink-3)">生成日期：' + esc(L.generated || '—') + '</span></div>');
+      + '<br><span style="color:var(--ink-3)">生成日期：' + esc(L.generated || '—') + ' · 每个交易日盘后学习跑批自动重算</span></div>');
+    /* 与优化看板同源的已验证结论（回测截至 2026-11-13 台账 75 笔；样本外验证进行中） */
+    h.push('<div class="sm-sync"><b>⚡ 已验证结论（与「优化看板」同源 · 回测截至 2026-11-13 台账 ' + num(L.n || 75) + ' 笔）</b>'
+      + '<div>① <b>入场缺口是最大亏损源</b>：小幅低开(-1%~0%) 32 笔累计 <b class="sm-down">-30.07%</b>，其余 43 笔 <b class="sm-up">+4.54%</b> —— 9:25 开盘价落在这一档直接不买。</div>'
+      + '<div>② <b>弱市是放大器</b>：10 月止损率先触发 78.6%，为最差月份 —— 大盘偏冷日（闸门分 < 0）降仓或空仓。</div>'
+      + '<div>③ <b>卖法</b>：T+2 开盘无条件卖（回测 53.3%/-0.21%），叠加①②后回测 <b class="sm-up">+26.2%</b>；正用双口径记账攒样本外证据，验证通过前不改引擎。</div>'
+      + '<div>④ <b>评分已饱和</b>：入选票得分几乎全是满分，总分无区分度——看下面分档表时请只看「量比 / 净流入 / rr」。</div>'
+      + '<div style="margin-top:4px;color:var(--ink-3)">↑ 以上为本轮回测结论（不变）；上方 KPI 与分档表随每个交易日学习跑批自动更新。</div></div>');
     h.push(learningKpis(L));
     h.push('<div class="card" style="margin-top:12px"><div class="card-head"><h3>📊 因子分档胜率</h3>'
       + '<span class="sub">同档内样本胜率 · 量比 / 净流入最有区分度</span></div><div class="card-body">'
