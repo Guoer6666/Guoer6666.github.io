@@ -243,6 +243,8 @@
         '.opt-pickrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--pink-line,#ffd6e3);font-size:13px}' +
         '.opt-pickrow b{min-width:80px;display:inline-block}' +
         '.opt-pickrow input{width:84px;padding:5px;border:1px solid var(--pink-line,#ffd6e3);border-radius:6px}' +
+        '.opt-sigdate{font-size:11px;font-weight:600;color:#1f7a45;background:#e7f8ee;border:1px solid #a9e0c0;border-radius:10px;padding:1px 8px;margin-left:4px}' +
+        '.opt-sigtip{font-size:12px;color:#555;background:var(--pink-soft,#fff0f5);border:1px solid var(--pink-line,#ffd6e3);border-radius:8px;padding:7px 10px;margin-bottom:8px;line-height:1.5}' +
         '.opt-foot{font-size:11px;color:#999;margin-top:6px;text-align:center}' +
         '.opt-banner{background:linear-gradient(135deg,#fff3f8,#fdeaf3);border:1px solid var(--pink,#ff7fa6);border-radius:14px;padding:12px 14px;margin-bottom:14px}' +
         '.opt-banner-h{font-size:14px;font-weight:700;color:var(--pink-deep,#f2588a);margin-bottom:6px}' +
@@ -289,23 +291,31 @@
       var box = document.getElementById('optPicks');
       function renderPicks(data) {
         if (!box) return;
+        var sigDate = (data && data.date) ? data.date : '';
         var lists = [];
         ['dList', 'cList', 'bList', 'aList'].forEach(function (k) {
           if (data && Array.isArray(data[k])) data[k].forEach(function (it) { lists.push(it); });
         });
+        var head = '<div class="opt-sec-h" style="font-size:13px;margin-top:10px">📡 今日信号（已自动加载）' +
+          (sigDate ? ' <span class="opt-sigdate">信号日 ' + esc(sigDate) + '</span>' : '') + '</div>';
         if (!lists.length) {
-          box.innerHTML = '<div class="opt-note">今日信号未自动加载（工作台未部署 pick_latest 或今日空仓）。' +
-            '可直接在上方手填 c0 / 开盘价判定，效果一样。</div>';
+          var dec = (data && data.decision) ? esc(data.decision) : '今日无入选名单（空仓），无需操作。';
+          box.innerHTML = head +
+            '<div class="opt-note">【' + (sigDate || '今日') + '】' + dec + '</div>' +
+            '<div class="opt-note">若想手动验证：上方「9:25 开盘决策器」手填 c0 / 开盘价即可判定，效果一样。</div>';
           return;
         }
-        var html = '<div class="opt-sec-h" style="font-size:13px;margin-top:10px">📡 今日信号（填开盘价实时判定）</div>';
+        var html = head;
+        html += '<div class="opt-sigtip">信号日 ' + esc(sigDate || '未知') + ' 入选 ' + lists.length +
+          ' 只 · 次日(T+1) 9:25 开盘填价，红/黄/绿一眼看买不买。</div>';
         lists.forEach(function (it, i) {
           var c0 = num(it.close != null ? it.close : it.c0);
           var stop = num(it.stopLoss != null ? it.stopLoss : it.buyLimit);
           var name = it.name || it.code || ('信号' + (i + 1));
           html += '<div class="opt-pickrow" data-c0="' + c0 + '" data-stop="' + stop + '" data-i="' + i + '">' +
             '<b>' + esc(name) + '</b>' +
-            '<span style="color:#888">c0 ' + (isNaN(c0) ? '—' : c0.toFixed(2)) + '</span>' +
+            '<span style="color:#888">c0 ' + (isNaN(c0) ? '—' : c0.toFixed(2)) +
+              (isNaN(stop) ? '' : ' · 止损 ' + stop.toFixed(2)) + '</span>' +
             '<input placeholder="开盘价" data-pick="' + i + '">' +
             '<span class="opt-pv" style="font-size:12px"></span></div>';
         });
@@ -326,10 +336,13 @@
       try {
         fetch('./api/reports/pick_latest.json?ts=' + Date.now(), { cache: 'no-store' })
           .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (j) { renderPicks(j); })
-          .catch(function () { if (box) box.innerHTML = '<div class="opt-note">今日信号未自动加载（工作台未部署 pick_latest）。可直接手填 c0 / 开盘价判定。</div>'; });
+          .then(function (j) {
+            if (!j) { if (box) box.innerHTML = '<div class="opt-note">今日信号加载失败（数据尚未部署或网络异常）。可直接手填 c0 / 开盘价判定，效果一样。</div>'; return; }
+            renderPicks(j);
+          })
+          .catch(function () { if (box) box.innerHTML = '<div class="opt-note">今日信号加载失败（未解锁或网络异常）。可直接手填 c0 / 开盘价判定。</div>'; });
       } catch (e) {
-        if (box) box.innerHTML = '<div class="opt-note">今日信号未自动加载。可直接手填 c0 / 开盘价判定。</div>';
+        if (box) box.innerHTML = '<div class="opt-note">今日信号加载失败。可直接手填 c0 / 开盘价判定。</div>';
       }
     }
   };
