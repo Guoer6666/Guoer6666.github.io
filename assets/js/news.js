@@ -609,18 +609,21 @@ const News = (() => {
   async function fetchNews(force) {
     if (!force && cache && Date.now() - lastAt < 60000) return cache;
 
-    // 1) 同源服务端代理
-    try {
-      const r = await fetch('/api/news' + (force ? '?force=1' : ''), { cache: 'no-store' });
-      if (r.ok) {
-        const d = await r.json();
-        if (d && d.ok && Array.isArray(d.items)) {
-          cache = d; lastAt = Date.now();
-          try { Store.set('news_cache', d); } catch (e) { }
-          return d;
+    // 1) 同源服务端代理（静态托管如 GitHub Pages 无此后端，404 一次即记忆跳过，不再空转）
+    if (!fetchNews._noProxy) {
+      try {
+        const r = await fetch('/api/news' + (force ? '?force=1' : ''), { cache: 'no-store' });
+        if (r.ok) {
+          const d = await r.json();
+          if (d && d.ok && Array.isArray(d.items)) {
+            cache = d; lastAt = Date.now();
+            try { Store.set('news_cache', d); } catch (e) { }
+            return d;
+          }
         }
-      }
-    } catch (e) { /* 降级 */ }
+        if (r.status === 404) fetchNews._noProxy = true; // 静态托管：后续直接走直连通道，省一次必失败请求
+      } catch (e) { fetchNews._noProxy = true; }
+    }
 
     // 2) 东方财富直连
     try {

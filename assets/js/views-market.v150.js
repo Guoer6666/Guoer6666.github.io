@@ -124,8 +124,9 @@ V.overnight = {
     reg.onReload = loadQ;
     await Promise.all([loadNews(false), loadQ()]);
 
-    /* 要闻每 2 分钟自动刷新一次（fetchNews 内部有 60s 短缓存，不会重复打接口），保证时效 */
-    reg.interval(() => { loadNews(false); }, 120000);
+    /* 快讯每 2 分钟 + 外围行情每 60 秒自动刷新（fetchNews 内部有 60s 短缓存），
+       保证「外围指数实时」卡名副其实——此前只有快讯自动刷新、指数卡要手点 */
+    reg.interval(() => { loadNews(false); loadQ(); }, 60000);
   }
 };
 
@@ -562,7 +563,7 @@ V.usnight = {
       const sec = V.usnight._usSec;
       if (!el) return;
       if (!sec || !sec.ok) {
-        el.innerHTML = '<div class="flash-empty">美股板块榜暂无可靠数据源：原东方财富板块接口已下线。宁缺勿假，不再用 ETF 涨跌幅代理（与真实板块榜口径有偏差）；待找到真实板块数据源后本卡自动恢复。</div>';
+        el.innerHTML = '<div class="flash-empty">美股板块榜暂无可靠真实数据源（2026-11-14 实测：东财 clist / push2delay / datacenter 三类官方接口的美股板块口径均已无数据）。宁缺勿假，不用 ETF 涨跌幅代理；待找到真实板块数据源后本卡自动恢复。</div>';
         if (note) note.textContent = '';
         return;
       }
