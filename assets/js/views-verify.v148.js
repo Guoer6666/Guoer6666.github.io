@@ -206,24 +206,33 @@ V.verify = (() => {
       /* ④ 今天选出 → 下个交易日执行 */
       /* 验证页没有今日 D 列表（那是 pickscreen 页的事），这里跳过或提示 */
 
-      /* ⑤ 历史已了结：全量 history 按信号月份分组折叠（2026-09-08 升级：不再只用最近 4 批） */
+      /* ⑤ 历史已了结：全量 history 按信号月份分组折叠（2026-11-14 升级：空仓日/纪律放弃日也逐日展示，不跳日子） */
       const histAll = LEDGER.history || days;
-      const doneDays = histAll.filter(d => d.phase === 'done');
-      if (doneDays.length) {
+      /* 去重：days 与 history 可能有重叠（按 signal_date+phase 去重，同日同相取第一条） */
+      const seenKey = {};
+      const allDays = histAll.filter(d => {
+        const k = (d.signal_date || '') + '|' + (d.phase || '');
+        if (seenKey[k]) return false;
+        seenKey[k] = true; return true;
+      }).sort((a, b) => (a.signal_date || '').localeCompare(b.signal_date || ''));
+      const doneDays = allDays.filter(d => d.phase === 'done');
+      const emptyDays = allDays.filter(d => d.phase !== 'done');
+      if (allDays.length) {
         const groups = {};
-        doneDays.forEach(d => {
+        allDays.forEach(d => {
           const k = (d.signal_date || '').slice(0, 7);
           if (!groups[k]) groups[k] = [];
           groups[k].push(d);
         });
         const months = Object.keys(groups).sort().reverse();
         html += '<div class="m26-fold" id="vHist"><div class="m26-fold-h" onclick="this.parentElement.classList.toggle(\'m26-open\')">'
-          + '📁 历史已了结（共 ' + doneDays.length + ' 批，按信号月份分组）<span class="m26-fold-arrow">▸</span></div>'
+          + '📁 历史逐日记录（共 ' + allDays.length + ' 个交易日：已了结 ' + doneDays.length + ' 批 · 未开仓/放弃 ' + emptyDays.length + ' 日，不跳日子）<span class="m26-fold-arrow">▸</span></div>'
           + '<div class="m26-fold-b">';
         months.forEach(m => {
           const list = groups[m];
           const monthLabel = m.replace('-', '年') + '月';
-          const ms = list.reduce((acc, d) => {
+          const doneList = list.filter(d => d.phase === 'done');
+          const ms = doneList.reduce((acc, d) => {
             const s = d.summary || {};
             acc.pick_n += s.pick_n || 0;
             acc.buy_n += s.buy_n || 0;
@@ -238,15 +247,29 @@ V.verify = (() => {
           const mTotalRet = ms.avg_rets.length ? ms.avg_rets.reduce((a, b) => a + b, 0) : 0;
           html += '<div class="m26-fold">'
             + '<div class="m26-fold-h" onclick="this.parentElement.classList.toggle(\'m26-open\')">'
-            + '📅 ' + monthLabel + '（' + list.length + ' 批）'
+            + '📅 ' + monthLabel + '（' + doneList.length + ' 批已了结'
+            + (list.length - doneList.length ? ' · ' + (list.length - doneList.length) + ' 日未开仓' : '') + '）'
             + '　选出 ' + ms.pick_n + ' / 买入 ' + ms.buy_n
             + '　胜率 <b class="' + dirCls(mWinRate - 0.5) + '">' + pctP(mWinRate) + '</b>'
             + '　平均 <b class="' + dirCls(mAvgRet) + '">' + pctS(mAvgRet) + '</b>'
             + '　累计 <b class="' + dirCls(mTotalRet) + '">' + pctS(mTotalRet) + '</b>'
             + '<span class="m26-fold-arrow">▸</span></div>'
             + '<div class="m26-fold-b">';
-          list.forEach(d => {
+          /* 按日期正序逐日展示：done 批次完整明细；empty/skipped 日也占一行写明原因，不跳日子 */
+          list.slice().sort((a, b) => (a.signal_date || '').localeCompare(b.signal_date || '')).forEach(d => {
             const s = d.summary || {};
+            if (d.phase !== 'done') {
+              const isSkip = d.phase === 'skipped';
+              const reason = isSkip
+                ? '选出 ' + (s.pick_n || 0) + ' 只，但全部按纪律未买入（高开超限/开盘破位）'
+                : (d.empty_reason || '当日未产出选股名单（空仓）');
+              html += '<div class="lg-block">'
+                + '<div class="lg-block-t">📅 ' + fmtD(d.signal_date)
+                + '<span class="lg-tag ' + (isSkip ? 'lg-skip' : 'lg-tag-hold') + '" style="margin-left:6px">' + (isSkip ? '纪律放弃' : '未开仓') + '</span></div>'
+                + '<div class="lg-sub">' + UI.esc(reason) + '</div>'
+                + '</div>';
+              return;
+            }
             html += '<div class="lg-block">'
               + '<div class="lg-block-t">📅 ' + fmtD(d.signal_date) + ' 选出 → ' + fmtD(d.buy_date) + ' 买入'
               + '<span class="lg-tag lg-tag-done">已了结</span></div>'
