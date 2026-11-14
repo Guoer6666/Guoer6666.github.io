@@ -255,8 +255,8 @@ V.verify = (() => {
             + '　累计 <b class="' + dirCls(mTotalRet) + '">' + pctS(mTotalRet) + '</b>'
             + '<span class="m26-fold-arrow">▸</span></div>'
             + '<div class="m26-fold-b">';
-          /* 按日期正序逐日展示：done 批次完整明细；empty/skipped 日也占一行写明原因，不跳日子 */
-          list.slice().sort((a, b) => (a.signal_date || '').localeCompare(b.signal_date || '')).forEach(d => {
+          /* 按日期倒序逐日展示（最新在上）：done 批次完整明细；empty/skipped 日也占一行写明原因，不跳日子 */
+          list.slice().sort((a, b) => (b.signal_date || '').localeCompare(a.signal_date || '')).forEach(d => {
             const s = d.summary || {};
             if (d.phase !== 'done') {
               const isSkip = d.phase === 'skipped';
