@@ -15,7 +15,8 @@ const MENU = [
     key: 'pick', icon: '🎯', title: '选股系统', items: [
       { k: 'm2560', label: '2560观察池' },
       { k: 'holdings', label: '个股逻辑拆解' },
-      { k: 'pickscreen', label: '个股拆解选股' }
+      { k: 'pickscreen', label: '个股拆解选股' },
+      { k: 'optimize', label: '优化看板' }
     ]
   },
   {
