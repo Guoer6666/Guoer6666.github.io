@@ -281,7 +281,7 @@
     if (!box) return;
     var pos = getPositions();
     if (!pos.length) {
-      box.innerHTML = '<div class="opt-sigtip">暂无持仓。在上方「今日信号」点「✅ 我已买入」后，到卖出日这里会自动告诉你卖不卖、按什么价卖。</div>';
+      box.innerHTML = '<div class="opt-sigtip">暂无持仓。在上方「今日信号」点「＋ 登记买入」后，到卖出日这里会自动告诉你卖不卖、按什么价卖。</div>';
       return;
     }
     var todayStr = fmtDate(new Date());
