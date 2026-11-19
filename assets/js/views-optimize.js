@@ -192,31 +192,41 @@
     box.innerHTML = html;
 
     var rowsBox = document.getElementById('optPickRows');
+    var positions = getPositions();
     rowsBox.innerHTML = lists.map(function (it, i) {
       var c0 = num(it.close != null ? it.close : it.c0);
       var stop = num(it.stopLoss != null ? it.stopLoss : it.buyLimit);
       var tgt = num(it.target != null ? it.target : it.buyLimit);
       var code = String(it.code || '');
       var name = it.name || it.code || ('信号' + (i + 1));
+      var already = positions.some(function (p) { return p.code === code; });
+      var btnHtml = already
+        ? '<button class="opt-buybtn" disabled>✅ 已登记</button>'
+        : '<button class="opt-buybtn" data-i="' + i + '" disabled>⏳ 判定中</button>';
       return '<div class="opt-pickrow" data-code="' + esc(code) + '" data-c0="' + c0 + '" data-stop="' + stop +
         '" data-tgt="' + tgt + '" data-name="' + esc(name) + '">' +
         '<b>' + esc(name) + '</b>' +
         '<span>' + (isNaN(c0) ? '' : 'c0 ' + c0.toFixed(2)) + (isNaN(stop) ? '' : ' · 止损 ' + stop.toFixed(2)) +
         (isNaN(tgt) ? '' : ' · 目标 ' + tgt.toFixed(2)) + '</span>' +
         '<span class="opt-live" style="color:#888">行情加载中…</span>' +
-        '<button class="opt-buybtn" data-i="' + i + '">✅ 我已买入</button></div>';
+        btnHtml + '</div>';
     }).join('');
 
-    rowsBox.querySelectorAll('.opt-buybtn').forEach(function (b) {
+    rowsBox.querySelectorAll('.opt-buybtn[data-i]').forEach(function (b) {
       b.addEventListener('click', function () {
         var row = b.closest('.opt-pickrow');
+        /* 登记买入：记录当时的真实现价作为「我登记的买价」，供实战账本优先采用。
+           无实时行情时退回到系统开盘价 open（在行情回调里写入 data-open）。 */
+        var regPrice = num(row.getAttribute('data-livepx')) || num(row.getAttribute('data-open')) || num(row.getAttribute('data-c0'));
         addPosition({
           code: row.getAttribute('data-code'), name: row.getAttribute('data-name'),
           c0: num(row.getAttribute('data-c0')), stopLoss: num(row.getAttribute('data-stop')),
-          target: num(row.getAttribute('data-tgt')), buyDate: todayStr
+          target: num(row.getAttribute('data-tgt')), buyDate: todayStr,
+          regPrice: regPrice, sigDate: sigDate
         });
-        b.textContent = '✅ 已记录'; b.disabled = true;
+        b.textContent = '✅ 已登记'; b.disabled = true;
         if (typeof window.__optRenderPos === 'function') window.__optRenderPos();
+        if (typeof window.__optRenderBattle === 'function') window.__optRenderBattle();
       });
     });
 
@@ -233,15 +243,31 @@
         var c0 = num(row.getAttribute('data-c0'));
         var stop = num(row.getAttribute('data-stop'));
         var live = row.querySelector('.opt-live');
+        var btn = row.querySelector('.opt-buybtn[data-i]');
         if (!q || !(q.open > 0)) {
           live.innerHTML = '<span class="opt-badge warn">⏳ 等待 9:25 开盘价</span>';
+          if (btn) btn.textContent = '⏳ 等开盘价';
           return;
         }
+        // 记录真实现价与系统开盘价，供「登记买入」采用
+        row.setAttribute('data-livepx', q.price > 0 ? q.price : q.open);
+        row.setAttribute('data-open', q.open);
         var r = judge(c0, q.open, stop);
         var cls = r.cls === 'stop' ? 'stop' : (r.cls === 'warn' ? 'warn' : 'buy');
         var emoji = cls === 'stop' ? '🔴' : (cls === 'warn' ? '🟡' : '🟢');
         live.innerHTML = '今开 <b>' + q.open.toFixed(2) + '</b> · 现 ' + q.price.toFixed(2) +
           ' <span class="opt-badge ' + cls + '">' + emoji + ' ' + r.title + '</span>';
+        // 判定为「不买/放弃/破止损」时，登记按钮置灰但仍可点（尊重用户自主，记为手动登记）
+        if (btn) {
+          btn.disabled = false;
+          if (cls !== 'buy') {
+            btn.classList.add('opt-buybtn-muted');
+            btn.textContent = '登记买入(系统不建议)';
+          } else {
+            btn.classList.remove('opt-buybtn-muted');
+            btn.textContent = '＋ 登记买入';
+          }
+        }
       });
     });
   }
@@ -305,6 +331,73 @@
           title + ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%)</span>';
       });
     });
+  }
+
+  /* --- 实战账本（混合口径：登记价优先 / 系统买入价兜底；统一 T+2 开盘卖） --- */
+  function renderBattleShell() {
+    return '<div class="opt-card" id="optBattleCard"><div class="opt-sec-h">🧾 实战账本（按你的真实操作算胜率）</div>' +
+      '<div id="optBattle"><div class="opt-note">正在加载台账与登记记录…</div></div></div>';
+  }
+  /* 卖出统一 T+2 开盘价：因无法实时盯盘，规避止损/达标的盘中判断延迟；
+     买入：该股若被「登记买入」用登记价，否则用系统 T+1 开盘价。 */
+  function renderBattle(box, ledger, positions) {
+    if (!box) return;
+    if (!ledger || !Array.isArray(ledger.history)) {
+      box.innerHTML = '<div class="opt-note">台账未加载（未解锁或网络异常），实战账本暂不可用。</div>';
+      return;
+    }
+    // 按「信号日 + 代码」精确匹配到那一笔交易，避免一次登记覆盖该股所有历史样本
+    var regMap = {};
+    (positions || []).forEach(function (p) {
+      var key = (p.sigDate || p.buyDate || '') + '|' + p.code;
+      regMap[key] = p;
+    });
+    var rows = [];
+    ledger.history.forEach(function (day) {
+      (day.rows || []).forEach(function (r) {
+        if (r.status !== 'OK') return;                 // 只算系统判定该买的样本
+        var buySys = num(r.open);                       // 系统 T+1 开盘买入价
+        var sell = num(r.open2);                        // 统一 T+2 开盘卖
+        if (!(buySys > 0) || !(sell > 0)) return;       // 无卖出价（未结算/持仓）跳过
+        var reg = regMap[day.signal_date + '|' + r.code];
+        var regPx = reg ? num(reg.regPrice) : NaN;
+        var usedReg = !!(regPx > 0);
+        var buy = usedReg ? regPx : buySys;
+        rows.push({
+          code: r.code, name: r.name, buyDate: day.buy_date, sigDate: day.signal_date,
+          buy: buy, buySys: buySys, sell: sell, usedReg: usedReg,
+          ret: buy > 0 ? (sell / buy - 1) : null
+        });
+      });
+    });
+    rows.sort(function (a, b) { return (b.buyDate || '') < (a.buyDate || '') ? -1 : 1; });
+    var settled = rows.filter(function (x) { return x.ret != null; });
+    var n = settled.length;
+    var win = settled.filter(function (x) { return x.ret > 0; }).length;
+    var sum = settled.reduce(function (s, x) { return s + x.ret; }, 0);
+    var regN = settled.filter(function (x) { return x.usedReg; }).length;
+
+    var h = '<div class="opt-sigtip">口径：<b>买入</b>=登记过按你登记价、没登记按系统 T+1 开盘价；<b>卖出</b>=统一 T+2 开盘价' +
+      '（无法实时盯盘，不做盘中止损/达标判断）。样本 ' + n + ' 笔已了结，其中 ' + regN + ' 笔用了登记价。</div>';
+    if (!n) {
+      box.innerHTML = h + '<div class="opt-note">暂无已了结样本。</div>';
+      return;
+    }
+    h += '<div class="opt-kpis">' +
+      '<div class="opt-kpi"><div class="l">实战胜率</div><div class="v">' + (win / n * 100).toFixed(1) + '%</div><div class="s">' + win + '/' + n + ' 笔</div></div>' +
+      '<div class="opt-kpi"><div class="l">平均收益</div><div class="v">' + pnl(sum / n * 100) + '</div><div class="s">开盘卖口径</div></div>' +
+      '<div class="opt-kpi"><div class="l">系统口径胜率</div><div class="v">' + (ledger.cum && ledger.cum.win_rate != null ? (ledger.cum.win_rate * 100).toFixed(1) + '%' : '—') + '</div><div class="s">原系统对照</div></div>' +
+      '</div>';
+    h += '<table class="opt-tbl"><thead><tr><th>买入日</th><th>股票</th><th>买入价</th><th>卖出价</th><th>收益</th></tr></thead><tbody>';
+    settled.slice(0, 12).forEach(function (x) {
+      h += '<tr><td>' + esc(x.buyDate) + '</td><td>' + esc(x.name) + (x.usedReg ? ' ✍️' : '') +
+        '</td><td>' + x.buy.toFixed(2) + '</td><td>' + x.sell.toFixed(2) + '</td><td>' + pnl(x.ret * 100) + '</td></tr>';
+    });
+    h += '</tbody></table>';
+    if (settled.length > 12) h += '<div class="opt-note">仅显示最近 12 笔，共 ' + settled.length + ' 笔已计入统计。</div>';
+    h += '<div class="opt-tip">✍️ = 用你登记的买入价；其余用系统开盘价。所有价格来自真实台账行情，无编造。' +
+      '「系统口径胜率」是原止损/达标/收盘规则的对照值，与实战口径并列，不互相覆盖。</div>';
+    box.innerHTML = h;
   }
 
   /* --- 策略体检报告（静态，不每天变） --- */
@@ -424,6 +517,7 @@
         '.opt-live{font-size:13px;font-weight:600}' +
         '.opt-buybtn,.opt-sellbtn{margin-left:auto;padding:4px 10px;border:1px solid var(--pink,#ff7fa6);background:var(--pink-soft,#fff0f5);color:var(--pink-deep,#f2588a);border-radius:8px;font-size:12px;cursor:pointer}' +
         '.opt-buybtn:disabled{opacity:.5;cursor:default}' +
+        '.opt-buybtn-muted{opacity:.72;font-size:11px;border-color:#ccc;color:#888;background:#fafafa}' +
         '.opt-badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:12px;font-weight:700}' +
         '.opt-badge.buy{background:#e7f8ee;color:#1f7a45}.opt-badge.warn{background:#fff7e0;color:#9a6b00}.opt-badge.stop{background:#fde8e8;color:#c02929}' +
         '.opt-sigtip{font-size:12.5px;color:#555;background:var(--pink-soft,#fff0f5);border:1px solid var(--pink-line,#ffd6e3);border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.6}' +
@@ -440,6 +534,7 @@
         renderBanner() +
         renderPicksShell() +
         renderPositionsShell() +
+        renderBattleShell() +
         renderDecision() +
         '<div class="opt-card"><div class="opt-sec-h">📊 策略体检报告（静态·不每天变）</div>' +
         renderKpis() + renderLoss() + renderHolding() + renderEnv() + renderPlan() + renderPlaybook() +
@@ -470,6 +565,16 @@
       /* 自动买卖副驾驶 */
       var picksBox = document.getElementById('optPicks');
       var posBox = document.getElementById('optPositions');
+      var battleBox = document.getElementById('optBattle');
+
+      function loadBattle() {
+        if (!battleBox) return;
+        fetch('./api/reports/verify_ledger.json?ts=' + Date.now(), { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { renderBattle(battleBox, j, getPositions()); })
+          .catch(function () { renderBattle(battleBox, null, getPositions()); });
+      }
+      window.__optRenderBattle = loadBattle;
 
       function loadPicks() {
         if (!picksBox) return;
@@ -486,12 +591,14 @@
 
       loadPicks();
       loadPos();
+      loadBattle();
 
-      /* 每 10 秒自动刷新行情（开盘价判定 + 卖出判定） */
+      /* 每 10 秒自动刷新行情（开盘价判定 + 卖出判定 + 实战账本） */
       if (window.__optTimer) clearInterval(window.__optTimer);
       window.__optTimer = setInterval(function () {
         loadPicks();
         loadPos();
+        loadBattle();
       }, 10000);
     }
   };
