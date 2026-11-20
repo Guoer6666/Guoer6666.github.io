@@ -1462,6 +1462,9 @@ a.flash:hover .fgo{opacity:1}
 .lg-cell5 .lg-k{font-size:10px;color:var(--ink-3)}
 .lg-cell5 .lg-v{font-size:14px;font-weight:750;font-variant-numeric:tabular-nums}
 .lg-s5{font-size:9.5px;color:var(--ink-3);margin-top:1px;font-variant-numeric:tabular-nums}
+/* 持仓中：卖出对照尺 */
+.lg-sellcmp{margin-top:8px;padding:7px 8px;border-radius:7px;background:var(--panel-2);border:1px dashed var(--line)}
+.lg-sellcmp-t{font-size:11px;color:var(--ink-2);font-weight:650;margin-bottom:2px}
 /* 当日涨跌幅标签 */
 .lg-day-chg{font-size:12.5px;font-weight:750;font-variant-umeric:tabular-nums;padding:2px 7px;border-radius:4px;background:rgba(0,0,0,.04);flex-shrink:0}
 /* 当日涨跌幅（open→close） */

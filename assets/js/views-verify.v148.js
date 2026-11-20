@@ -128,6 +128,25 @@ V.verify = (() => {
         + '</div>'
       + '</div>'
 
+      /* ---- 持仓中：三档卖出对照尺（价位均来自台账真实值，不是编造的实际卖价） ---- */
+      + (bought && !sold ? (function () {
+        const buy = parseFloat(r.open), sl = parseFloat(r.stopLoss), tg = parseFloat(r.target), cur = parseFloat(r.close);
+        if (![buy, sl, tg, cur].every(isFinite) || buy <= 0) return '';
+        const cell = (k, px, v) => '<div class="lg-cell5"><span class="lg-k">' + k + '</span>'
+          + '<span class="lg-v ' + dirCls(v) + '">' + f2(px) + '</span>'
+          + '<span class="lg-s5 ' + dirCls(v) + '">' + pctS(v) + '</span></div>';
+        return '<div class="lg-sellcmp">'
+          + '<div class="lg-sellcmp-t">🧭 卖出对照尺（按买入 @' + f2(buy) + ' 算 · 价位为真实值，收益为情景预览）</div>'
+          + '<div class="lg-grid5">'
+          + cell('触止损卖', sl, sl / buy - 1)
+          + cell('目标卖', tg, tg / buy - 1)
+          + cell('按现价卖', cur, cur / buy - 1)
+          + '</div>'
+          + '<div class="lg-foot" style="margin-top:5px">实际卖出以 ' + fmtD(r.exit_date || '') + ' 开盘价为准（现按收盘预览）；'
+          + '触止损/到目标为盘中触发价，非实际成交价。</div>'
+          + '</div>';
+      })() : '')
+
       /* ---- 买卖结果行 ---- */
       + '<div class="lg-foot">'
       + (bought ? '买入 <b>@' + f2(r.open) + '</b>　盘中 L:' + f2(r.low) + ' / H:' + f2(r.high) + '　'
