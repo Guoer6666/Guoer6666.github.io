@@ -363,10 +363,15 @@
         var regPx = reg ? num(reg.regPrice) : NaN;
         var usedReg = !!(regPx > 0);
         var buy = usedReg ? regPx : buySys;
+        var sysSell = num(r.exit_price);                       // 原系统三段式卖出价
+        var ret = buy > 0 ? (sell / buy - 1) : null;           // 实战收益（你的买入 + T+2开盘卖）
+        var sysRet = (buySys > 0 && sysSell > 0) ? (sysSell / buySys - 1) : null; // 系统收益（系统开盘买 + 原系统卖）
+        var diff = (ret != null && sysRet != null) ? (ret - sysRet) : null;       // 差额：实战 − 系统
         rows.push({
           code: r.code, name: r.name, buyDate: day.buy_date, sigDate: day.signal_date,
           buy: buy, buySys: buySys, sell: sell, usedReg: usedReg,
-          ret: buy > 0 ? (sell / buy - 1) : null
+          sysSell: sysSell, exitReason: r.exit_reason || '',
+          ret: ret, sysRet: sysRet, diff: diff
         });
       });
     });
@@ -376,9 +381,15 @@
     var win = settled.filter(function (x) { return x.ret > 0; }).length;
     var sum = settled.reduce(function (s, x) { return s + x.ret; }, 0);
     var regN = settled.filter(function (x) { return x.usedReg; }).length;
+    // 只比卖出：固定系统买入价，比较 T+2开盘卖(open2) 与 原系统卖(exit_price)
+    var withSys = settled.filter(function (x) { return x.sysSell > 0; });
+    var sellBetter = withSys.filter(function (x) { return x.sell > x.sysSell; }).length;
+    var sellWorse = withSys.filter(function (x) { return x.sell < x.sysSell; }).length;
+    var sellFlat = withSys.length - sellBetter - sellWorse;
 
-    var h = '<div class="opt-sigtip">口径：<b>买入</b>=登记过按你登记价、没登记按系统 T+1 开盘价；<b>卖出</b>=统一 T+2 开盘价' +
-      '（无法实时盯盘，不做盘中止损/达标判断）。样本 ' + n + ' 笔已了结，其中 ' + regN + ' 笔用了登记价。</div>';
+    var h = '<div class="opt-sigtip">口径：<b>实战</b>=你的买入(登记优先/否则系统开盘) + T+2开盘卖；<b>系统</b>=系统开盘买 + 原系统止损/达标/收盘卖；' +
+      '<b>差额</b>=实战−系统。样本 ' + n + ' 笔已了结，其中 ' + regN + ' 笔用了登记价。' +
+      '固定买入价只比卖出：开盘卖 <b>' + sellBetter + '</b> 笔更优 / ' + sellWorse + ' 笔更差 / ' + sellFlat + ' 笔持平。</div>';
     if (!n) {
       box.innerHTML = h + '<div class="opt-note">暂无已了结样本。</div>';
       return;
@@ -388,15 +399,20 @@
       '<div class="opt-kpi"><div class="l">平均收益</div><div class="v">' + pnl(sum / n * 100) + '</div><div class="s">开盘卖口径</div></div>' +
       '<div class="opt-kpi"><div class="l">系统口径胜率</div><div class="v">' + (ledger.cum && ledger.cum.win_rate != null ? (ledger.cum.win_rate * 100).toFixed(1) + '%' : '—') + '</div><div class="s">原系统对照</div></div>' +
       '</div>';
-    h += '<table class="opt-tbl"><thead><tr><th>买入日</th><th>股票</th><th>买入价</th><th>卖出价</th><th>收益</th></tr></thead><tbody>';
+    h += '<table class="opt-tbl"><thead><tr><th>买入日</th><th>股票</th><th>实战</th><th>系统</th><th>差额</th></tr></thead><tbody>';
     settled.slice(0, 12).forEach(function (x) {
-      h += '<tr><td>' + esc(x.buyDate) + '</td><td>' + esc(x.name) + (x.usedReg ? ' ✍️' : '') +
-        '</td><td>' + x.buy.toFixed(2) + '</td><td>' + x.sell.toFixed(2) + '</td><td>' + pnl(x.ret * 100) + '</td></tr>';
+      var buyTag = x.usedReg ? ('✍️' + x.buy.toFixed(2)) : ('系统' + x.buy.toFixed(2));
+      var sysPart = x.sysSell > 0 ? ('系卖' + x.sysSell.toFixed(2) + (x.exitReason ? '[' + esc(x.exitReason) + ']' : '')) : '系卖—';
+      h += '<tr><td>' + esc(x.buyDate) + '</td>' +
+        '<td style="text-align:left">' + esc(x.name) + '<div class="opt-sub">买' + buyTag + ' · 开卖' + x.sell.toFixed(2) + ' · ' + sysPart + '</div></td>' +
+        '<td>' + pnl(x.ret * 100) + '</td>' +
+        '<td>' + pnl(x.sysRet != null ? x.sysRet * 100 : null) + '</td>' +
+        '<td>' + pnl(x.diff != null ? x.diff * 100 : null) + '</td></tr>';
     });
     h += '</tbody></table>';
     if (settled.length > 12) h += '<div class="opt-note">仅显示最近 12 笔，共 ' + settled.length + ' 笔已计入统计。</div>';
-    h += '<div class="opt-tip">✍️ = 用你登记的买入价；其余用系统开盘价。所有价格来自真实台账行情，无编造。' +
-      '「系统口径胜率」是原止损/达标/收盘规则的对照值，与实战口径并列，不互相覆盖。</div>';
+    h += '<div class="opt-tip">✍️=用你登记的买入价；「开卖」=T+2开盘价(实战卖出)，「系卖」=原系统卖出价(带原因)。' +
+      '「实战/系统」两列的买入价也不同(登记价 vs 系统开盘价)，故差额含买入+卖出两个维度；上方「更优笔数」是固定买入价、只比卖出的净效果。所有价格来自真实台账，无编造。</div>';
     box.innerHTML = h;
   }
 
@@ -501,6 +517,7 @@
         '.opt-tbl th,.opt-tbl td{padding:7px 8px;border-bottom:1px solid var(--pink-line,#ffd6e3);text-align:right}' +
         '.opt-tbl th:first-child,.opt-tbl td:first-child{text-align:left}' +
         '.opt-tbl th{color:var(--pink-deep,#f2588a);font-weight:600}' +
+        '.opt-sub{font-size:11px;color:#999;font-weight:400;margin-top:2px;line-height:1.4}' +
         '.opt-bad{color:#e23b3b;font-weight:700}.opt-good{color:#1f9d55;font-weight:700}.opt-flat{color:#888}' +
         '.opt-inputs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end}' +
         '.opt-inputs label{font-size:12px;color:#666;display:flex;flex-direction:column;gap:3px}' +
